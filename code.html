@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b0d12">
+<meta name="description" content="Mi Playground: editor HTML, CSS y JavaScript con vista previa en vivo, consola y API preparada para Claude MCP.">
+<title>Mi Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   TOKENS
+   ============================================================ */
+:root{
+  --bg:#0b0d12; --bg-2:#0f1218; --panel:#12151d; --panel-2:#171b25; --panel-3:#1d2230;
+  --border:#232938; --border-2:#2e3548;
+  --text:#e7eaf0; --text-2:#b7bfce; --muted:#7f889b; --faint:#555e72;
+  --accent:#3ee6a8; --accent-2:#22c38a; --accent-ink:#04140d; --accent-soft:rgba(62,230,168,.12);
+  --c-html:#ff7a59; --c-css:#5aa9ff; --c-js:#f5d04a;
+  --ok:#3ee6a8; --warn:#f5b84a; --err:#ff5d6c; --info:#7aa7ff;
+  --radius:10px; --radius-sm:7px;
+  --shadow:0 12px 40px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3);
+  --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans:Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --code-size:13px; --code-lh:20px;
+  --top-h:52px; --status-h:28px; --split:55%;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::selection{background:rgba(62,230,168,.28)}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:#2a3142;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-track{background:transparent}
+
+.app{height:100vh;height:100dvh;display:grid;grid-template-rows:var(--top-h) auto minmax(0,1fr) var(--status-h)}
+.topbar{grid-row:1}.mtabs{grid-row:2}.workspace{grid-row:3}.statusbar{grid-row:4}
+
+/* ============================================================
+   TOP BAR
+   ============================================================ */
+.topbar{display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--bg-2);border-bottom:1px solid var(--border);min-width:0}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),#2bb3ff);color:var(--accent-ink);font:700 13px var(--mono);box-shadow:0 0 0 1px rgba(255,255,255,.08) inset}
+.brand-name{font-size:15px}
+.sep{width:1px;height:22px;background:var(--border)}
+.proj{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.proj-name{min-width:60px;max-width:280px;width:100%;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);padding:5px 8px;font-weight:600;font-size:14px;text-overflow:ellipsis;transition:border-color .15s,background .15s}
+.proj-name:hover{border-color:var(--border)}
+.proj-name:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+.save-state{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.save-state.dirty .dot{background:var(--warn);box-shadow:0 0 0 3px rgba(245,184,74,.15)}
+.save-state.saved .dot{background:var(--ok)}
+.save-state.saving .dot{background:var(--info);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.actions{display:flex;align-items:center;gap:6px}
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--panel);color:var(--text-2);font-size:13px;font-weight:500;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .08s}
+.btn:hover{background:var(--panel-2);border-color:var(--border-2);color:var(--text)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{background:#5df0bb}
+.btn.danger{color:var(--err);border-color:rgba(255,93,108,.35)}
+.btn.danger:hover{background:rgba(255,93,108,.1)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover{background:var(--panel-2)}
+.btn.icon{width:34px;padding:0;justify-content:center}
+.btn[disabled]{opacity:.45;pointer-events:none}
+kbd{font:500 11px var(--mono);padding:1px 5px;border-radius:4px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text-2)}
+.mcp-pill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;border-radius:999px;border:1px solid var(--border);background:var(--panel);font-size:12px;color:var(--text-2);font-weight:500}
+.mcp-pill:hover{border-color:var(--border-2);color:var(--text)}
+.state-dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none;transition:background .2s}
+[data-mcp="connecting"] .state-dot{background:var(--warn);animation:pulse 1s infinite}
+[data-mcp="connected"] .state-dot{background:var(--ok);box-shadow:0 0 0 3px rgba(62,230,168,.18)}
+[data-mcp="error"] .state-dot{background:var(--err)}
+
+/* dropdown */
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);min-width:230px;background:var(--panel);border:1px solid var(--border-2);border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:60;opacity:0;transform:translateY(-4px) scale(.98);pointer-events:none;transition:opacity .14s,transform .14s}
+.menu.open{opacity:1;transform:none;pointer-events:auto}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:6px;font-size:13px;color:var(--text-2);text-align:left}
+.menu button:hover{background:var(--panel-2);color:var(--text)}
+.menu button kbd{margin-left:auto}
+.menu hr{border:0;border-top:1px solid var(--border);margin:6px 2px}
+
+/* ============================================================
+   MOBILE TABS
+   ============================================================ */
+.mtabs{display:none;gap:4px;padding:6px 8px;background:var(--bg-2);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.mtabs::-webkit-scrollbar{display:none}
+.mtab{flex:1;min-width:64px;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);border:1px solid transparent;position:relative}
+.mtab[aria-selected="true"]{background:var(--panel-2);color:var(--text);border-color:var(--border)}
+.mtab .ldot{width:7px;height:7px;border-radius:50%}
+.mtab .badge{position:absolute;top:3px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--err);color:#fff;font:700 10px/16px var(--sans);display:none}
+.mtab .badge.show{display:block}
+
+/* ============================================================
+   WORKSPACE
+   ============================================================ */
+.workspace{display:grid;grid-template-rows:var(--split) 6px 1fr;min-height:0;min-width:0}
+.editors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--border);min-height:0}
+.panel{display:flex;flex-direction:column;background:var(--panel);min-width:0;min-height:0}
+.panel-head{display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 12px;border-bottom:1px solid var(--border);background:var(--bg-2);flex:none}
+.lang{display:inline-flex;align-items:center;gap:7px;font:600 12px var(--sans);letter-spacing:.04em;text-transform:uppercase}
+.ldot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.l-html .ldot,.ldot.html{background:var(--c-html)} .l-css .ldot,.ldot.css{background:var(--c-css)} .l-js .ldot,.ldot.js{background:var(--c-js)}
+.meta{font:11px var(--mono);color:var(--faint);margin-left:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.head-actions{margin-left:auto;display:flex;gap:2px}
+.tbtn{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--muted);transition:background .15s,color .15s}
+.tbtn:hover{background:var(--panel-3);color:var(--text)}
+.tbtn.on{color:var(--accent);background:var(--accent-soft)}
+.editor-host{flex:1;min-height:0;position:relative;overflow:hidden}
+.panel.focused .panel-head{box-shadow:inset 0 -2px 0 var(--accent)}
+.l-html.focused .panel-head{box-shadow:inset 0 -2px 0 var(--c-html)}
+.l-css.focused .panel-head{box-shadow:inset 0 -2px 0 var(--c-css)}
+.l-js.focused .panel-head{box-shadow:inset 0 -2px 0 var(--c-js)}
+
+.resizer{background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:row-resize;position:relative;touch-action:none}
+.resizer::after{content:"";position:absolute;left:50%;top:50%;width:36px;height:2px;margin:-1px 0 0 -18px;border-radius:2px;background:var(--border-2);transition:background .15s}
+.resizer:hover::after,.resizer.drag::after{background:var(--accent)}
+
+.output{display:grid;grid-template-columns:minmax(0,1fr) 1px minmax(280px,34%);min-height:0;background:var(--border)}
+.output > .panel{min-height:0}
+.vsep{background:var(--border)}
+
+/* ---------- Preview ---------- */
+.seg{display:inline-flex;padding:2px;border-radius:7px;background:var(--panel-2);border:1px solid var(--border)}
+.seg button{height:24px;padding:0 8px;border-radius:5px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel-3);color:var(--text)}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+.toggle input{appearance:none;width:28px;height:16px;border-radius:10px;background:var(--panel-3);border:1px solid var(--border-2);position:relative;margin:0;cursor:pointer;transition:background .15s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.toggle input:checked{background:var(--accent-soft);border-color:var(--accent-2)}
+.toggle input:checked::after{transform:translateX(12px);background:var(--accent)}
+.preview-stage{flex:1;min-height:0;position:relative;background:#fff;overflow:hidden;display:flex;justify-content:center}
+.preview-stage.mobile{background:repeating-linear-gradient(45deg,#0e1117,#0e1117 10px,#10141b 10px,#10141b 20px);align-items:flex-start;padding:16px;overflow:auto}
+.frame-wrap{width:100%;height:100%;position:relative;transition:width .25s ease}
+.preview-stage.mobile .frame-wrap{width:375px;max-width:100%;height:auto;aspect-ratio:375/740;max-height:calc(100% - 4px);flex:none;border-radius:22px;border:8px solid #1e2330;box-shadow:var(--shadow);overflow:hidden;background:#fff}
+#preview{width:100%;height:100%;border:0;display:block;background:#fff}
+.run-flash{position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);transform:translateX(-100%);opacity:0;pointer-events:none}
+.run-flash.go{animation:flash .6s ease}
+@keyframes flash{0%{opacity:1;transform:translateX(-100%)}100%{opacity:0;transform:translateX(100%)}}
+.panel.preview.is-fs{position:fixed;inset:0;z-index:80}
+.fs-exit{display:none}
+.panel.preview.is-fs .fs-exit{display:grid}
+.panel.preview:fullscreen .fs-exit{display:grid}
+
+/* ---------- Console ---------- */
+.con-filters{display:flex;gap:3px;margin-left:6px;overflow-x:auto;scrollbar-width:none}
+.chip{height:22px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--panel-3);color:var(--text)}
+.chip .n{font:500 10px var(--mono);opacity:.8}
+.console-list{flex:1;min-height:0;overflow:auto;font:12px/1.5 var(--mono);padding:4px 0}
+.cl{display:grid;grid-template-columns:18px 1fr auto;gap:8px;padding:5px 10px;border-bottom:1px solid rgba(35,41,56,.6);align-items:start;animation:slidein .18s ease}
+@keyframes slidein{from{opacity:0;transform:translateY(-3px)}}
+.cl .ic{margin-top:2px;width:14px;height:14px}
+.cl .msg{white-space:pre-wrap;word-break:break-word;color:var(--text-2);min-width:0}
+.cl .tm{font-size:10px;color:var(--faint);white-space:nowrap;margin-top:2px}
+.cl .rep{display:inline-block;min-width:18px;padding:0 5px;margin-right:6px;border-radius:9px;background:var(--panel-3);color:var(--text-2);font-size:10px;text-align:center}
+.cl.warn{background:rgba(245,184,74,.06);color:var(--warn)} .cl.warn .msg{color:#f3d49a}
+.cl.error{background:rgba(255,93,108,.07);color:var(--err)} .cl.error .msg{color:#ffb3ba}
+.cl.info .ic{color:var(--info)} .cl.log .ic{color:var(--faint)}
+.cl.system{color:var(--accent)} .cl.system .msg{color:var(--muted);font-style:italic}
+.cl.mcp{color:#c49bff} .cl.mcp .msg{color:#d9c3ff}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:100%;color:var(--faint);font:12px var(--sans);text-align:center;padding:20px}
+.empty svg{width:22px;height:22px;opacity:.6}
+
+/* ============================================================
+   STATUS BAR
+   ============================================================ */
+.statusbar{display:flex;align-items:center;gap:14px;padding:0 12px;background:var(--bg-2);border-top:1px solid var(--border);font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden}
+.statusbar button{display:inline-flex;align-items:center;gap:6px;color:var(--muted);height:100%}
+.statusbar button:hover{color:var(--text)}
+.statusbar .sp{flex:1}
+
+/* ============================================================
+   LITE EDITOR (fallback sin CDN)
+   ============================================================ */
+.lite{position:absolute;inset:0;display:flex;font:var(--code-size)/var(--code-lh) var(--mono);background:var(--panel)}
+.lite-gutter{flex:none;min-width:44px;padding:10px 10px 10px 8px;text-align:right;color:var(--faint);background:var(--panel);border-right:1px solid var(--border);overflow:hidden;user-select:none;white-space:pre}
+.lite-gutter .cur{color:var(--text-2)}
+.lite-body{position:relative;flex:1;min-width:0}
+.lite-body pre,.lite-body textarea{position:absolute;inset:0;margin:0;padding:10px 14px 40px;border:0;font:inherit;line-height:inherit;letter-spacing:0;tab-size:2;white-space:pre;overflow:auto;word-wrap:normal}
+.lite-body pre{pointer-events:none;color:var(--text);overflow:hidden}
+.lite-body textarea{background:transparent;color:transparent;caret-color:var(--accent);resize:none;outline:none;-webkit-text-fill-color:transparent}
+.lite-body textarea::selection{background:rgba(62,230,168,.25);-webkit-text-fill-color:transparent}
+.t-tag{color:#ff8f70}.t-attr{color:#f5d04a}.t-str{color:#9be38a}.t-com{color:#5c6680;font-style:italic}.t-kw{color:#c792ea}.t-num{color:#f78c6c}.t-fn{color:#82aaff}.t-prop{color:#7fdbca}.t-at{color:#c792ea}.t-sel{color:#ffcb6b}.t-pun{color:#89ddff}.t-ent{color:#f78c6c}.t-lit{color:#ff9cac}
+
+/* CodeMirror ajustes */
+.editor-host .cm-editor{height:100%;font-size:var(--code-size);background:var(--panel)}
+.editor-host .cm-scroller{font-family:var(--mono);line-height:var(--code-lh)}
+.editor-host .cm-editor.cm-focused{outline:none}
+.editor-host .cm-gutters{background:var(--panel)!important;border-right:1px solid var(--border)!important}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(5,7,10,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .16s}
+.overlay.open{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:560px;max-height:min(86dvh,760px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border-2);border-radius:14px;box-shadow:var(--shadow);transform:translateY(8px) scale(.985);transition:transform .18s ease;overflow:hidden}
+.overlay.open .modal{transform:none}
+.modal.wide{max-width:760px}
+.modal.sm{max-width:420px}
+.m-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.m-head h2{margin:0;font-size:16px;font-weight:650;letter-spacing:-.01em}
+.m-head .tbtn{margin-left:auto}
+.m-body{padding:16px 18px;overflow:auto}
+.m-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border);background:var(--bg-2)}
+.m-body p{color:var(--text-2);margin:0 0 10px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.input{height:38px;padding:0 11px;border-radius:var(--radius-sm);border:1px solid var(--border-2);background:var(--bg-2);font-size:14px;outline:none;transition:border-color .15s}
+.input:focus{border-color:var(--accent)}
+
+/* projects */
+.p-tools{display:flex;gap:8px;margin-bottom:12px}
+.p-tools .input{flex:1}
+.p-list{display:flex;flex-direction:column;gap:6px}
+.p-item{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-2);transition:border-color .15s,background .15s}
+.p-item:hover{border-color:var(--border-2);background:var(--panel-2)}
+.p-item.current{border-color:rgba(62,230,168,.45);background:var(--accent-soft)}
+.p-thumb{width:38px;height:38px;border-radius:8px;flex:none;display:grid;place-items:center;background:var(--panel-3);font:700 13px var(--mono);color:var(--text-2)}
+.p-main{flex:1;min-width:0;cursor:pointer}
+.p-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p-sub{font-size:12px;color:var(--muted)}
+.p-act{display:flex;gap:2px}
+.tag{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-left:6px}
+
+/* MCP */
+.mcp-status{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-2);margin-bottom:16px}
+.mcp-orb{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--panel-3);position:relative;flex:none}
+.mcp-orb .state-dot{width:12px;height:12px}
+.mcp-status .t1{font-weight:650}
+.mcp-status .t2{font-size:12px;color:var(--muted)}
+.mcp-status .val{font-weight:600}
+[data-mcp="disconnected"] .val{color:var(--muted)}
+[data-mcp="connecting"] .val{color:var(--warn)}
+[data-mcp="connected"] .val{color:var(--ok)}
+[data-mcp="error"] .val{color:var(--err)}
+.mcp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.callout{padding:10px 12px;border-radius:var(--radius-sm);background:rgba(122,167,255,.08);border:1px solid rgba(122,167,255,.25);color:#c6d6ff;font-size:13px;margin-bottom:14px}
+.callout b{color:#e1e9ff}
+.h3{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+.fn-list{display:grid;grid-template-columns:1fr;gap:4px}
+.fn{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:12px;padding:7px 10px;border-radius:6px;background:var(--bg-2);border:1px solid var(--border);font-size:12px;align-items:baseline}
+.fn code{font:500 12px var(--mono);color:var(--accent);white-space:nowrap}
+.fn span{color:var(--text-2)}
+ol.steps{margin:0;padding-left:20px;color:var(--text-2);font-size:13px}
+ol.steps li{margin-bottom:6px}
+ol.steps code,.m-body code{font:12px var(--mono);background:var(--panel-3);padding:1px 5px;border-radius:4px;color:var(--text)}
+.mcp-log{max-height:150px;overflow:auto;font:11px/1.6 var(--mono);background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text-2)}
+.mcp-log .ok{color:var(--ok)}.mcp-log .bad{color:var(--err)}
+
+/* shortcuts */
+.kgrid{display:grid;grid-template-columns:1fr auto;gap:8px 18px;font-size:13px;color:var(--text-2)}
+.kgrid div:nth-child(even){text-align:right}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.toasts{position:fixed;z-index:200;right:16px;bottom:calc(var(--status-h) + 14px);display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:220px;max-width:min(380px,calc(100vw - 32px));padding:10px 12px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border-2);box-shadow:var(--shadow);font-size:13px;animation:tin .22s cubic-bezier(.2,.9,.3,1.2)}
+.toast.out{animation:tout .18s ease forwards}
+@keyframes tin{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@keyframes tout{to{opacity:0;transform:translateY(6px)}}
+.toast .ic{width:18px;height:18px;flex:none}
+.toast.ok .ic{color:var(--ok)}.toast.err .ic{color:var(--err)}.toast.warn .ic{color:var(--warn)}.toast.info .ic{color:var(--info)}
+.toast .tx{flex:1}
+.toast .ta{font-weight:600;color:var(--accent);font-size:12px;padding:4px 6px;border-radius:5px}
+.toast .ta:hover{background:var(--accent-soft)}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 1100px){
+  .btn .lbl{display:none}
+  .btn:not(.icon){padding:0 10px}
+}
+@media (max-width: 900px){
+  :root{--top-h:50px;--code-size:13.5px;--code-lh:21px}
+  .mtabs{display:flex}
+  .brand-name,.sep,.mcp-pill .lbl,.hide-m{display:none}
+  .topbar{gap:6px;padding:0 8px}
+  .workspace{display:block;position:relative}
+  .editors,.output{display:contents}
+  .resizer,.vsep{display:none}
+  .workspace .panel{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .15s}
+  .workspace .panel.active{visibility:visible;opacity:1}
+  .output .panel.preview{background:var(--panel)}
+  .tbtn{width:34px;height:34px}
+  .statusbar .hide-s{display:none}
+  .toasts{left:12px;right:12px;align-items:stretch}
+  .toast{max-width:none}
+  .mcp-grid{grid-template-columns:1fr}
+  #saveText{display:none}
+  .mcp-status{flex-wrap:wrap}
+  #mcpCopy{width:100%;justify-content:center}
+  .fn{grid-template-columns:1fr;gap:2px}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{max-width:none!important;border-radius:16px 16px 0 0;max-height:90dvh}
+  .p-act .tbtn{width:38px;height:38px}
+}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ ICON SPRITE ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M7 21h10"/><path d="M5.5 13.5 13 6a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3l-7.5 7.5H9z"/><path d="m9 10 5 5"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></symbol>
+    <symbol id="i-max" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M8 16h8"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+    <symbol id="i-err" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></symbol>
+    <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 14h.01M15 14h.01"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+  </defs>
+</svg>
+
+<div class="app" id="app">
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand"><div class="logo" aria-hidden="true">&lt;/&gt;</div><span class="brand-name">Mi Playground</span></div>
+    <div class="sep"></div>
+    <div class="proj">
+      <input class="proj-name" id="projName" aria-label="Nombre del proyecto" spellcheck="false" maxlength="80">
+      <div class="save-state saved" id="saveState" title="Estado de guardado"><span class="dot"></span><span id="saveText">Guardado</span></div>
+    </div>
+    <div class="actions">
+      <button class="mcp-pill" id="mcpPill" data-mcp="disconnected" title="Claude MCP (Alt+M)"><span class="state-dot"></span><span class="lbl">Claude MCP</span></button>
+      <button class="btn" id="btnProjects" title="Proyectos (Alt+O)"><svg class="i"><use href="#i-folder"/></svg><span class="lbl">Proyectos</span></button>
+      <button class="btn" id="btnSave" title="Guardar (Ctrl+S)"><svg class="i"><use href="#i-save"/></svg><span class="lbl">Guardar</span></button>
+      <button class="btn primary" id="btnRun" title="Ejecutar (Ctrl+Enter)"><svg class="i"><use href="#i-play"/></svg><span class="lbl">Ejecutar</span></button>
+      <div class="menu-wrap">
+        <button class="btn icon" id="btnMenu" aria-haspopup="true" aria-expanded="false" title="Más opciones"><svg class="i"><use href="#i-more"/></svg></button>
+        <div class="menu" id="menu" role="menu">
+          <button data-act="new" role="menuitem"><svg class="i"><use href="#i-plus"/></svg>Nuevo proyecto<kbd>Alt N</kbd></button>
+          <button data-act="rename" role="menuitem"><svg class="i"><use href="#i-edit"/></svg>Cambiar nombre</button>
+          <hr>
+          <button data-act="import" role="menuitem"><svg class="i"><use href="#i-upload"/></svg>Importar archivo HTML</button>
+          <button data-act="export" role="menuitem"><svg class="i"><use href="#i-download"/></svg>Exportar como HTML<kbd>Alt E</kbd></button>
+          <hr>
+          <button data-act="mcp" role="menuitem"><svg class="i"><use href="#i-bot"/></svg>Claude MCP<kbd>Alt M</kbd></button>
+          <button data-act="shortcuts" role="menuitem"><svg class="i"><use href="#i-keyboard"/></svg>Atajos de teclado<kbd>Alt H</kbd></button>
+          <hr>
+          <button data-act="delete" role="menuitem" style="color:var(--err)"><svg class="i"><use href="#i-trash"/></svg>Eliminar proyecto</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ MOBILE TABS ============ -->
+  <nav class="mtabs" role="tablist" aria-label="Paneles">
+    <button class="mtab" role="tab" data-view="html"><span class="ldot html"></span>HTML</button>
+    <button class="mtab" role="tab" data-view="css"><span class="ldot css"></span>CSS</button>
+    <button class="mtab" role="tab" data-view="js"><span class="ldot js"></span>JS</button>
+    <button class="mtab" role="tab" data-view="preview"><svg class="i"><use href="#i-play"/></svg>Vista</button>
+    <button class="mtab" role="tab" data-view="console"><svg class="i"><use href="#i-terminal"/></svg>Consola<span class="badge" id="mBadge">0</span></button>
+  </nav>
+
+  <!-- ============ WORKSPACE ============ -->
+  <main class="workspace" id="workspace">
+    <section class="editors">
+      <div class="panel l-html" data-pane="html">
+        <div class="panel-head">
+          <span class="lang"><span class="ldot"></span>HTML</span><span class="meta" data-meta="html"></span>
+          <div class="head-actions">
+            <button class="tbtn" data-copy="html" title="Copiar HTML"><svg class="i"><use href="#i-copy"/></svg></button>
+            <button class="tbtn" data-clear="html" title="Limpiar HTML"><svg class="i"><use href="#i-eraser"/></svg></button>
+          </div>
+        </div>
+        <div class="editor-host" id="ed-html"></div>
+      </div>
+      <div class="panel l-css" data-pane="css">
+        <div class="panel-head">
+          <span class="lang"><span class="ldot"></span>CSS</span><span class="meta" data-meta="css"></span>
+          <div class="head-actions">
+            <button class="tbtn" data-copy="css" title="Copiar CSS"><svg class="i"><use href="#i-copy"/></svg></button>
+            <button class="tbtn" data-clear="css" title="Limpiar CSS"><svg class="i"><use href="#i-eraser"/></svg></button>
+          </div>
+        </div>
+        <div class="editor-host" id="ed-css"></div>
+      </div>
+      <div class="panel l-js" data-pane="js">
+        <div class="panel-head">
+          <span class="lang"><span class="ldot"></span>JavaScript</span><span class="meta" data-meta="js"></span>
+          <div class="head-actions">
+            <button class="tbtn" data-copy="js" title="Copiar JavaScript"><svg class="i"><use href="#i-copy"/></svg></button>
+            <button class="tbtn" data-clear="js" title="Limpiar JavaScript"><svg class="i"><use href="#i-eraser"/></svg></button>
+          </div>
+        </div>
+        <div class="editor-host" id="ed-js"></div>
+      </div>
+    </section>
+
+    <div class="resizer" id="resizer" role="separator" aria-orientation="horizontal" aria-label="Redimensionar paneles" tabindex="0"></div>
+
+    <section class="output">
+      <div class="panel preview" data-pane="preview" id="previewPanel">
+        <div class="panel-head">
+          <span class="lang" style="color:var(--text-2)"><svg class="i"><use href="#i-play"/></svg>Vista previa</span>
+          <div class="head-actions" style="align-items:center;gap:6px">
+            <label class="toggle hide-m" title="Actualizar al escribir"><input type="checkbox" id="autoRun" checked>Auto</label>
+            <div class="seg" role="group" aria-label="Tamaño de vista">
+              <button id="vDesk" aria-pressed="true" title="Vista escritorio"><svg class="i"><use href="#i-monitor"/></svg></button>
+              <button id="vMob" aria-pressed="false" title="Vista móvil"><svg class="i"><use href="#i-phone"/></svg></button>
+            </div>
+            <button class="tbtn" id="btnRefresh" title="Actualizar vista (Ctrl+Enter)"><svg class="i"><use href="#i-refresh"/></svg></button>
+            <button class="tbtn" id="btnFs" title="Pantalla completa"><svg class="i"><use href="#i-max"/></svg></button>
+            <button class="tbtn fs-exit" id="btnFsExit" title="Salir de pantalla completa"><svg class="i"><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+        <div class="preview-stage" id="stage">
+          <div class="frame-wrap"><iframe id="preview" title="Vista previa" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock"></iframe></div>
+          <div class="run-flash" id="runFlash"></div>
+        </div>
+      </div>
+      <div class="vsep"></div>
+      <div class="panel console" data-pane="console">
+        <div class="panel-head">
+          <span class="lang" style="color:var(--text-2)"><svg class="i"><use href="#i-terminal"/></svg>Consola</span>
+          <div class="con-filters" role="group" aria-label="Filtrar consola">
+            <button class="chip" data-filter="all" aria-pressed="true">Todo <span class="n" id="nAll">0</span></button>
+            <button class="chip" data-filter="log" aria-pressed="false">Log <span class="n" id="nLog">0</span></button>
+            <button class="chip" data-filter="warn" aria-pressed="false" style="color:var(--warn)">Avisos <span class="n" id="nWarn">0</span></button>
+            <button class="chip" data-filter="error" aria-pressed="false" style="color:var(--err)">Errores <span class="n" id="nErr">0</span></button>
+          </div>
+          <div class="head-actions">
+            <button class="tbtn" id="btnKeep" title="Conservar mensajes entre ejecuciones"><svg class="i"><use href="#i-dot"/></svg></button>
+            <button class="tbtn" id="btnConClear" title="Limpiar consola (Alt+L)"><svg class="i"><use href="#i-trash"/></svg></button>
+          </div>
+        </div>
+        <div class="console-list" id="conList" role="log" aria-live="polite"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ STATUS BAR ============ -->
+  <footer class="statusbar">
+    <button id="engineBtn" title="Cambiar motor del editor"><svg class="i" style="width:12px;height:12px"><use href="#i-code"/></svg><span id="engineTxt">Cargando editor…</span></button>
+    <span class="hide-s" id="runInfo">Sin ejecutar</span>
+    <span class="sp"></span>
+    <button id="autosaveBtn" title="Activar/desactivar guardado automático"><span id="autosaveTxt">Autoguardado: sí</span></button>
+    <span class="hide-s" id="storeTxt"></span>
+    <button id="mcpStatusBtn" data-mcp="disconnected"><span class="state-dot"></span><span id="mcpStatusTxt">MCP: No conectado</span></button>
+  </footer>
+</div>
+
+<input type="file" id="fileInput" accept=".html,.htm,.css,.js,text/html,text/css,text/javascript" hidden>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- ============ PROJECTS MODAL ============ -->
+<div class="overlay" id="mProjects" role="dialog" aria-modal="true" aria-labelledby="mpT">
+  <div class="modal">
+    <div class="m-head"><svg class="i"><use href="#i-folder"/></svg><h2 id="mpT">Proyectos</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body">
+      <div class="p-tools">
+        <input class="input" id="pSearch" placeholder="Buscar proyecto…" aria-label="Buscar proyecto">
+        <button class="btn primary" id="pNew"><svg class="i"><use href="#i-plus"/></svg><span>Nuevo</span></button>
+      </div>
+      <div class="p-list" id="pList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MCP MODAL ============ -->
+<div class="overlay" id="mMcp" role="dialog" aria-modal="true" aria-labelledby="mmT">
+  <div class="modal wide">
+    <div class="m-head"><svg class="i"><use href="#i-bot"/></svg><h2 id="mmT">Claude MCP</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body">
+      <div class="mcp-status" id="mcpBox" data-mcp="disconnected">
+        <div class="mcp-orb"><span class="state-dot"></span></div>
+        <div style="flex:1;min-width:0">
+          <div class="t1">Playground MCP</div>
+          <div class="t2">Estado: <span class="val" id="mcpStateTxt">No conectado</span> <span id="mcpDetail"></span></div>
+        </div>
+        <button class="btn" id="mcpCopy"><svg class="i"><use href="#i-copy"/></svg><span>Copiar info técnica</span></button>
+      </div>
+
+      <div class="callout">Esta página <b>no</b> habla directamente con Claude. Claude usa un <b>servidor MCP externo</b> (corre en tu computadora) que abre un puente WebSocket local. Esta pestaña se conecta a ese puente y solo ejecuta las funciones de <code>PlaygroundAPI</code> listadas abajo. No se guarda ninguna clave en el navegador: el código de emparejamiento vive solo en memoria mientras la pestaña esté abierta.</div>
+
+      <div class="mcp-grid">
+        <div class="field"><label for="mcpUrl">Dirección del puente</label><input class="input" id="mcpUrl" value="ws://127.0.0.1:8787" spellcheck="false"></div>
+        <div class="field"><label for="mcpToken">Código de emparejamiento</label><input class="input" id="mcpToken" type="password" placeholder="Tu código secreto (PLAYGROUND_TOKEN)" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="mcpConnect"><svg class="i"><use href="#i-plug"/></svg><span>Conectar</span></button>
+        <button class="btn" id="mcpDisconnect" disabled><svg class="i"><use href="#i-x"/></svg><span>Desconectar</span></button>
+      </div>
+
+      <div class="h3">Funciones expuestas</div>
+      <div class="fn-list" id="fnList"></div>
+
+      <div class="h3">Cómo conectar</div>
+      <p style="font-size:13px"><b>Desde el celular (servidor remoto):</b></p>
+      <ol class="steps">
+        <li>Sube <code>server.mjs</code> y <code>package.json</code> a Render con la variable <code>PLAYGROUND_TOKEN</code> (tu código secreto).</li>
+        <li>En la app de Claude: Conectores → Agregar conector personalizado → URL <code>https://TU-SERVIDOR.onrender.com/mcp/TU-CODIGO</code>.</li>
+        <li>Aquí arriba escribe <code>wss://TU-SERVIDOR.onrender.com/bridge</code> y tu código, y pulsa <b>Conectar</b>.</li>
+        <li>Usa pantalla dividida (Chrome + Claude) para que esta pestaña siga activa. Si se corta, se reconecta sola.</li>
+      </ol>
+      <p style="font-size:13px;margin-top:12px"><b>Desde una computadora (servidor local):</b></p>
+      <ol class="steps">
+        <li>Registra <code>playground-mcp-server.mjs</code> en Claude Code o Claude Desktop con <code>PLAYGROUND_TOKEN</code>.</li>
+        <li>Abre este Playground en esa computadora, usa <code>ws://127.0.0.1:8787</code> y tu código, y pulsa <b>Conectar</b>.</li>
+      </ol>
+
+      <div class="h3">Actividad del puente</div>
+      <div class="mcp-log" id="mcpLog"><span style="color:var(--faint)">Sin actividad.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SHORTCUTS MODAL ============ -->
+<div class="overlay" id="mKeys" role="dialog" aria-modal="true" aria-labelledby="mkT">
+  <div class="modal sm">
+    <div class="m-head"><svg class="i"><use href="#i-keyboard"/></svg><h2 id="mkT">Atajos de teclado</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body"><div class="kgrid">
+      <div>Ejecutar / actualizar vista</div><div><kbd>Ctrl</kbd> <kbd>Enter</kbd></div>
+      <div>Guardar proyecto</div><div><kbd>Ctrl</kbd> <kbd>S</kbd></div>
+      <div>Nuevo proyecto</div><div><kbd>Alt</kbd> <kbd>N</kbd></div>
+      <div>Abrir proyectos</div><div><kbd>Alt</kbd> <kbd>O</kbd></div>
+      <div>Exportar HTML</div><div><kbd>Alt</kbd> <kbd>E</kbd></div>
+      <div>Ir a HTML / CSS / JS</div><div><kbd>Alt</kbd> <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></div>
+      <div>Vista previa / Consola</div><div><kbd>Alt</kbd> <kbd>4</kbd> <kbd>5</kbd></div>
+      <div>Limpiar consola</div><div><kbd>Alt</kbd> <kbd>L</kbd></div>
+      <div>Panel Claude MCP</div><div><kbd>Alt</kbd> <kbd>M</kbd></div>
+      <div>Esta ayuda</div><div><kbd>Alt</kbd> <kbd>H</kbd></div>
+      <div>Indentar / desindentar</div><div><kbd>Tab</kbd> / <kbd>Shift</kbd> <kbd>Tab</kbd></div>
+      <div>Cerrar ventana</div><div><kbd>Esc</kbd></div>
+    </div><p style="margin-top:14px;font-size:12px;color:var(--muted)">En Mac usa <kbd>⌘</kbd> en lugar de <kbd>Ctrl</kbd>.</p></div>
+  </div>
+</div>
+
+<!-- ============ DIALOG (confirm / prompt) ============ -->
+<div class="overlay" id="mDialog" role="alertdialog" aria-modal="true" aria-labelledby="mdT">
+  <div class="modal sm">
+    <div class="m-head"><h2 id="mdT"></h2></div>
+    <div class="m-body"><p id="mdMsg"></p><input class="input" id="mdInput" style="width:100%;display:none" maxlength="80"></div>
+    <div class="m-foot"><button class="btn" id="mdCancel">Cancelar</button><button class="btn primary" id="mdOk">Aceptar</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   MI PLAYGROUND — lógica principal
+   Secciones: utilidades · almacenamiento · editores · vista previa ·
+   consola · proyectos · PlaygroundAPI · puente MCP · UI · arranque
+   ===================================================================== */
+
+/* ---------------------------------------------------------------
+   Utilidades
+   --------------------------------------------------------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const FILES = ['html', 'css', 'js'];
+const LANG_LABEL = { html: 'HTML', css: 'CSS', js: 'JavaScript' };
+const debounce = (fn, ms) => { let t; const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; d.cancel = () => clearTimeout(t); return d; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const prefs = {
+  get(k, d) { try { const v = localStorage.getItem('pg:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('pg:' + k, JSON.stringify(v)); } catch {} }
+};
+function normalizeFileName(name) {
+  const n = String(name || '').trim().toLowerCase();
+  const map = { html: 'html', 'index.html': 'html', htm: 'html', css: 'css', 'style.css': 'css', 'styles.css': 'css',
+    js: 'js', javascript: 'js', 'script.js': 'js', 'main.js': 'js', 'app.js': 'js' };
+  if (map[n]) return map[n];
+  throw new Error(`Archivo desconocido "${name}". Usa "html", "css" o "js".`);
+}
+function timeAgo(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 45) return 'hace un momento';
+  if (s < 3600) return `hace ${Math.round(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.round(s / 3600)} h`;
+  return new Date(ts).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {}
+    ta.remove(); return ok;
+  }
+}
+
+/* ---------------------------------------------------------------
+   Notificaciones
+   --------------------------------------------------------------- */
+const ICON = { ok: 'i-check', err: 'i-err', warn: 'i-alert', info: 'i-info' };
+function toast(msg, type = 'info', opts = {}) {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `<svg class="i ic"><use href="#${ICON[type]}"/></svg><div class="tx"></div>`;
+  el.querySelector('.tx').textContent = msg;
+  if (opts.action) {
+    const b = document.createElement('button'); b.className = 'ta'; b.textContent = opts.action.label;
+    b.onclick = () => { opts.action.run(); close(); }; el.appendChild(b);
+  }
+  $('#toasts').appendChild(el);
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 180); };
+  setTimeout(close, opts.duration || (opts.action ? 6000 : 2800));
+  while ($('#toasts').children.length > 4) $('#toasts').firstChild.remove();
+}
+
+/* ---------------------------------------------------------------
+   Diálogos (confirmar / pedir texto)
+   --------------------------------------------------------------- */
+const Modal = {
+  stack: [],
+  open(id) { const m = $('#' + id); m.classList.add('open'); this.stack.push(m); setTimeout(() => (m.querySelector('[autofocus]') || m.querySelector('input:not([type=checkbox]),button.primary') || m)?.focus?.(), 60); },
+  close(m) { m = m || this.stack[this.stack.length - 1]; if (!m) return; m.classList.remove('open'); this.stack = this.stack.filter(x => x !== m); if (m.id === 'mDialog' && Dialog.resolve) Dialog.finish(null); },
+  top() { return this.stack[this.stack.length - 1]; }
+};
+const Dialog = {
+  resolve: null,
+  ask({ title, message, okText = 'Aceptar', danger = false, input = null }) {
+    return new Promise(res => {
+      this.resolve = res;
+      $('#mdT').textContent = title; $('#mdMsg').textContent = message || '';
+      const inp = $('#mdInput'); inp.style.display = input !== null ? 'block' : 'none'; inp.value = input ?? '';
+      const ok = $('#mdOk'); ok.textContent = okText; ok.className = 'btn ' + (danger ? 'danger' : 'primary');
+      Modal.open('mDialog');
+      if (input !== null) setTimeout(() => { inp.focus(); inp.select(); }, 70);
+    });
+  },
+  finish(v) { const r = this.resolve; this.resolve = null; $('#mDialog').classList.remove('open'); Modal.stack = Modal.stack.filter(x => x.id !== 'mDialog'); r && r(v); },
+  confirm(o) { return this.ask(o).then(v => v !== null); },
+  prompt(o) { return this.ask({ ...o, input: o.value ?? '' }); }
+};
+$('#mdOk').onclick = () => Dialog.finish($('#mdInput').style.display === 'block' ? $('#mdInput').value : true);
+$('#mdCancel').onclick = () => Dialog.finish(null);
+$('#mdInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#mdOk').click(); } });
+$$('.overlay').forEach(o => {
+  o.addEventListener('mousedown', e => { if (e.target === o) Modal.close(o); });
+  $$('[data-close]', o).forEach(b => b.onclick = () => Modal.close(o));
+});
+
+/* ---------------------------------------------------------------
+   Almacenamiento: IndexedDB con respaldo en localStorage
+   --------------------------------------------------------------- */
+const Store = {
+  db: null, mode: 'indexeddb',
+  async init() {
+    try {
+      if (!('indexedDB' in window)) throw new Error('sin IndexedDB');
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('mi-playground', 1);
+        r.onupgradeneeded = () => { const s = r.result.createObjectStore('projects', { keyPath: 'id' }); s.createIndex('updatedAt', 'updatedAt'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('bloqueado'));
+        setTimeout(() => rej(new Error('timeout')), 4000);
+      });
+    } catch (e) { this.mode = 'localstorage'; console.warn('[Playground] IndexedDB no disponible, usando localStorage:', e.message); }
+  },
+  tx(mode, fn) {
+    return new Promise((res, rej) => {
+      const t = this.db.transaction('projects', mode); const s = t.objectStore('projects');
+      const r = fn(s); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Transacción abortada'));
+    });
+  },
+  lsAll() { try { return JSON.parse(localStorage.getItem('pg:projects') || '{}'); } catch { return {}; } },
+  lsWrite(o) { try { localStorage.setItem('pg:projects', JSON.stringify(o)); } catch (e) { throw new Error('Sin espacio en el almacenamiento local'); } },
+  async all() {
+    const list = this.mode === 'indexeddb' ? await this.tx('readonly', s => s.getAll()) : Object.values(this.lsAll());
+    return (list || []).sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+  async get(id) { return this.mode === 'indexeddb' ? await this.tx('readonly', s => s.get(id)) : this.lsAll()[id]; },
+  async put(p) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.put(p)); else { const o = this.lsAll(); o[p.id] = p; this.lsWrite(o); } return p; },
+  async del(id) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.delete(id)); else { const o = this.lsAll(); delete o[id]; this.lsWrite(o); } }
+};
+
+/* ---------------------------------------------------------------
+   Editor ligero (funciona sin internet): resaltado + números + indentación
+   --------------------------------------------------------------- */
+const HL = {
+  wrap(cls, s) { return `<span class="${cls}">${esc(s)}</span>`; },
+  run(src, rules) {
+    let out = '', i = 0; const re = new RegExp(rules.map(r => `(${r[0].source})`).join('|'), 'gy');
+    while (i < src.length) {
+      re.lastIndex = i; const m = re.exec(src);
+      if (m) {
+        const g = m.slice(1).findIndex(x => x !== undefined); const rule = rules[g];
+        out += typeof rule[1] === 'function' ? rule[1](m[0]) : (rule[1] ? this.wrap(rule[1], m[0]) : esc(m[0]));
+        i += m[0].length || 1;
+      } else { // sin token: copiar espacios o un solo carácter
+        const ws = /\s+/y; ws.lastIndex = i; const w = ws.exec(src);
+        const j = w ? i + w[0].length : i + 1;
+        out += esc(src.slice(i, j)); i = j;
+      }
+    }
+    return out;
+  },
+  js(src) {
+    return this.run(src, [
+      [/\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$)/, 't-com'],
+      [/`(?:\\[\s\S]|[^`\\])*`?|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?/, 't-str'],
+      [/\b(?:const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|super|import|export|from|default|async|await|try|catch|finally|throw|typeof|instanceof|in|of|delete|void|yield|this)\b/, 't-kw'],
+      [/\b(?:true|false|null|undefined|NaN|Infinity)\b/, 't-lit'],
+      [/\b(?:0x[\da-f]+|\d+\.?\d*(?:e[+-]?\d+)?)\b/i, 't-num'],
+      [/[A-Za-z_$][\w$]*(?=\s*\()/, 't-fn'],
+      [/[A-Za-z_$][\w$]*/, null],
+      [/=>|[{}()[\];,.<>=!+\-*/%&|^~?:]/, 't-pun']
+    ]);
+  },
+  css(src) {
+    return this.run(src, [
+      [/\/\*[\s\S]*?(?:\*\/|$)/, 't-com'],
+      [/"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?/, 't-str'],
+      [/@[\w-]+/, 't-at'],
+      [/#[\da-fA-F]{3,8}\b/, 't-num'],
+      [/-?[\w-]+(?=\s*:[^{;]*[;}\n])/, 't-prop'],
+      [/-?\d*\.?\d+(?:%|[a-z]+)?/, 't-num'],
+      [/[\w-]+(?=\()/, 't-fn'],
+      [/[.#]?[\w-]+|::?[\w-]+/, 't-sel'],
+      [/[{}();:,>+~*]/, 't-pun']
+    ]);
+  },
+  html(src) {
+    const tag = t => {
+      if (t.startsWith('<!--')) return this.wrap('t-com', t);
+      if (/^<!/i.test(t)) return this.wrap('t-kw', t);
+      return t.replace(/^(<\/?)([\w-]*)|("[^"]*"?|'[^']*'?)|([^\s=<>"'/]+)(?=\s*=)|(\/?>)$|([\s\S])/g, (m, open, name, str, attr, close, other) => {
+        if (open !== undefined) return this.wrap('t-pun', open) + this.wrap('t-tag', name);
+        if (str) return this.wrap('t-str', str);
+        if (attr) return this.wrap('t-attr', attr);
+        if (close) return this.wrap('t-pun', close);
+        return esc(other);
+      });
+    };
+    let out = '', i = 0; const re = /<!--[\s\S]*?(?:-->|$)|<!DOCTYPE[^>]*>?|<\/?[A-Za-z][\w-]*(?:[^>"']|"[^"]*"|'[^']*')*>?|&[#\w]+;/gi;
+    let m;
+    // contenido de <style> y <script> se resalta con su lenguaje
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(i, m.index));
+      if (m[0][0] === '&') out += this.wrap('t-ent', m[0]); else out += tag(m[0]);
+      i = re.lastIndex;
+      const open = /^<(script|style)\b[^>]*>$/i.exec(m[0]);
+      if (open) {
+        const endRe = new RegExp(`</${open[1]}\\s*>`, 'ig'); endRe.lastIndex = i; const e = endRe.exec(src);
+        const end = e ? e.index : src.length; const inner = src.slice(i, end);
+        out += open[1].toLowerCase() === 'script' ? this.js(inner) : this.css(inner);
+        i = end; re.lastIndex = end;
+      }
+    }
+    return out + esc(src.slice(i));
+  }
+};
+
+class LiteEditor {
+  constructor(host, lang, value, onChange) {
+    this.lang = lang; this.onChange = onChange; this.host = host;
+    host.innerHTML = `<div class="lite"><div class="lite-gutter" aria-hidden="true"></div><div class="lite-body"><pre aria-hidden="true"><code></code></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Editor ${LANG_LABEL[lang]}"></textarea></div></div>`;
+    this.ta = $('textarea', host); this.pre = $('pre', host); this.code = $('code', host); this.gutter = $('.lite-gutter', host);
+    this.ta.value = value; this.render();
+    this.ta.addEventListener('input', () => { this.render(); this.onChange(); });
+    this.ta.addEventListener('scroll', () => this.sync());
+    this.ta.addEventListener('keydown', e => this.keys(e));
+    this.ta.addEventListener('focus', () => host.closest('.panel').classList.add('focused'));
+    this.ta.addEventListener('blur', () => host.closest('.panel').classList.remove('focused'));
+  }
+  render() {
+    const v = this.ta.value;
+    this.code.innerHTML = HL[this.lang](v) + '\n';
+    const n = v.split('\n').length; if (n !== this.lines) { this.lines = n; let g = ''; for (let i = 1; i <= n; i++) g += i + '\n'; this.gutter.textContent = g; }
+    this.sync();
+  }
+  sync() { this.pre.scrollTop = this.ta.scrollTop; this.pre.scrollLeft = this.ta.scrollLeft; this.gutter.scrollTop = this.ta.scrollTop; }
+  insert(text) { // conserva el historial de deshacer cuando el navegador lo permite
+    this.ta.focus();
+    if (!document.execCommand('insertText', false, text)) { this.ta.setRangeText(text, this.ta.selectionStart, this.ta.selectionEnd, 'end'); this.ta.dispatchEvent(new Event('input')); }
+  }
+  keys(e) {
+    const ta = this.ta, v = ta.value, s = ta.selectionStart, en = ta.selectionEnd;
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ls = v.lastIndexOf('\n', s - 1) + 1;
+      if (s === en && !e.shiftKey) return this.insert('  ');
+      const le = v.indexOf('\n', en - (en > s && v[en - 1] === '\n' ? 1 : 0)); const end = le === -1 ? v.length : le;
+      const block = v.slice(ls, end);
+      const nb = e.shiftKey ? block.replace(/^ {1,2}/gm, '') : block.replace(/^/gm, '  ');
+      ta.setSelectionRange(ls, end); this.insert(nb); ta.setSelectionRange(ls, ls + nb.length);
+    } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const ls = v.lastIndexOf('\n', s - 1) + 1; const ind = /^[ \t]*/.exec(v.slice(ls, s))[0];
+      const before = v.slice(ls, s).trimEnd(); const after = v.slice(en);
+      const opens = /[{[(]$/.test(before) || (this.lang === 'html' && /<([a-z][\w-]*)(?:[^>]*[^/])?>$/i.test(before) && !/^<(br|hr|img|input|meta|link|area|base|col|embed|source|track|wbr)\b/i.test(/<[^<]*$/.exec(before)?.[0] || ''));
+      const closes = /^\s*([}\])]|<\/)/.test(after);
+      if (opens && closes) { this.insert('\n' + ind + '  ' + '\n' + ind); const p = s + 1 + ind.length + 2; ta.setSelectionRange(p, p); }
+      else this.insert('\n' + ind + (opens ? '  ' : ''));
+    } else if (e.key === 'Backspace' && s === en && s > 0) {
+      const ls = v.lastIndexOf('\n', s - 1) + 1; const pre = v.slice(ls, s);
+      if (pre.length && /^ +$/.test(pre) && pre.length % 2 === 0) { e.preventDefault(); ta.setSelectionRange(s - 2, s); this.insert(''); }
+    }
+  }
+  getValue() { return this.ta.value; }
+  setValue(v) { this.ta.value = v; this.render(); }
+  focus() { this.ta.focus(); }
+  destroy() { this.host.innerHTML = ''; }
+}
+
+/* ---------------------------------------------------------------
+   CodeMirror 6 (CDN) — se carga en segundo plano y reemplaza al
+   editor ligero si está disponible. Si falla, sigue el ligero.
+   --------------------------------------------------------------- */
+const CM_DEPS = 'deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3,@codemirror/language@6.10.1,@codemirror/autocomplete@6.16.0,@lezer/common@1.2.1,@lezer/highlight@1.2.0';
+let CM = null;
+async function loadCodeMirror() {
+  const u = p => `https://esm.sh/${p}?${CM_DEPS}`;
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo de espera agotado')), 9000));
+  const mods = await Promise.race([Promise.all([
+    import(u('codemirror@6.0.1')), import(u('@codemirror/view@6.26.3')), import(u('@codemirror/commands@6.5.0')),
+    import(u('@codemirror/lang-html@6.4.9')), import(u('@codemirror/lang-css@6.2.1')), import(u('@codemirror/lang-javascript@6.2.2')),
+    import(u('@codemirror/theme-one-dark@6.1.2'))
+  ]), timeout]);
+  const [cm, view, cmds, lh, lc, lj, theme] = mods;
+  return { basicSetup: cm.basicSetup, EditorView: view.EditorView, keymap: view.keymap, indentWithTab: cmds.indentWithTab,
+    langs: { html: lh.html, css: lc.css, js: lj.javascript }, oneDark: theme.oneDark };
+}
+class CMEditor {
+  constructor(host, lang, value, onChange) {
+    this.host = host; this.silent = false;
+    host.innerHTML = '';
+    const { EditorView, basicSetup, keymap, indentWithTab, langs, oneDark } = CM;
+    this.view = new EditorView({
+      doc: value, parent: host,
+      extensions: [basicSetup, keymap.of([indentWithTab]), langs[lang](), oneDark,
+        EditorView.updateListener.of(u => {
+          if (u.docChanged && !this.silent) onChange();
+          if (u.focusChanged) host.closest('.panel').classList.toggle('focused', u.view.hasFocus);
+        }),
+        EditorView.theme({ '&': { backgroundColor: 'var(--panel)' }, '.cm-gutters': { backgroundColor: 'var(--panel)' } })]
+    });
+  }
+  getValue() { return this.view.state.doc.toString(); }
+  setValue(v) { this.silent = true; this.view.dispatch({ changes: { from: 0, to: this.view.state.doc.length, insert: v } }); this.silent = false; }
+  focus() { this.view.focus(); }
+  destroy() { this.view.destroy(); this.host.innerHTML = ''; }
+}
+
+const Editors = {
+  map: {}, engine: 'lite',
+  mount(kind, values) {
+    for (const f of FILES) {
+      const host = $('#ed-' + f); const v = values?.[f] ?? this.map[f]?.getValue() ?? '';
+      this.map[f]?.destroy();
+      this.map[f] = kind === 'cm' ? new CMEditor(host, f, v, () => App.onEdit(f)) : new LiteEditor(host, f, v, () => App.onEdit(f));
+    }
+    this.engine = kind; UI.engine();
+  },
+  get(f) { return this.map[f].getValue(); },
+  set(f, v) { this.map[f].setValue(v); UI.meta(f); }
+};
+
+/* ---------------------------------------------------------------
+   Consola
+   --------------------------------------------------------------- */
+const Konsole = {
+  items: [], filter: 'all', keep: prefs.get('keepConsole', false), MAX: 500,
+  ICONS: { log: 'i-chev', info: 'i-info', debug: 'i-chev', warn: 'i-alert', error: 'i-err', system: 'i-play', mcp: 'i-bot' },
+  push(type, message, run) {
+    const last = this.items[this.items.length - 1];
+    if (last && last.type === type && last.message === message && last.run === run) { last.count++; last.time = Date.now(); this.render(); return; }
+    this.items.push({ type, message: String(message), time: Date.now(), run, count: 1 });
+    if (this.items.length > this.MAX) this.items.splice(0, this.items.length - this.MAX);
+    this.render();
+  },
+  clear() { this.items = []; this.render(); },
+  group(t) { return t === 'error' ? 'error' : t === 'warn' ? 'warn' : (t === 'log' || t === 'info' || t === 'debug') ? 'log' : 'other'; },
+  render: null
+};
+Konsole.render = debounce(() => {
+  const list = $('#conList');
+  const c = { all: 0, log: 0, warn: 0, error: 0 };
+  for (const it of Konsole.items) { const g = Konsole.group(it.type); c.all += it.count; if (c[g] !== undefined) c[g] += it.count; }
+  $('#nAll').textContent = c.all; $('#nLog').textContent = c.log; $('#nWarn').textContent = c.warn; $('#nErr').textContent = c.error;
+  const mb = $('#mBadge'); mb.textContent = c.error; mb.classList.toggle('show', c.error > 0);
+  const shown = Konsole.items.filter(it => Konsole.filter === 'all' || Konsole.group(it.type) === Konsole.filter);
+  if (!shown.length) { list.innerHTML = `<div class="empty"><svg class="i"><use href="#i-terminal"/></svg>${Konsole.items.length ? 'Nada con este filtro.' : 'La consola está vacía.<br>Usa console.log() en tu JavaScript.'}</div>`; return; }
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  list.innerHTML = shown.map(it => `<div class="cl ${it.type === 'debug' ? 'log' : it.type}"><svg class="i ic"><use href="#${Konsole.ICONS[it.type] || 'i-chev'}"/></svg><div class="msg">${it.count > 1 ? `<span class="rep">${it.count}</span>` : ''}${esc(it.message)}</div><span class="tm">${new Date(it.time).toLocaleTimeString('es-MX', { hour12: false })}</span></div>`).join('');
+  if (atBottom || shown.length < 30) list.scrollTop = list.scrollHeight;
+}, 30);
+
+/* ---------------------------------------------------------------
+   Vista previa (iframe aislado con sandbox, sin allow-same-origin)
+   --------------------------------------------------------------- */
+const Preview = {
+  runId: 0, pending: null, startedAt: 0,
+  // Script inyectado: captura consola y errores y los envía al editor.
+  capture(runId, jsLine) {
+    return `<script>(function(){var R=${runId},L=${jsLine},P=window.parent;
+function s(v,d,seen){d=d||0;seen=seen||[];try{
+if(v===null)return'null';if(v===undefined)return'undefined';var t=typeof v;
+if(t==='string')return d?JSON.stringify(v):v;if(t==='number'||t==='boolean'||t==='bigint')return String(v)+(t==='bigint'?'n':'');
+if(t==='symbol')return v.toString();if(t==='function')return'ƒ '+(v.name||'anónima')+'()';
+if(v instanceof Error)return(v.name||'Error')+': '+v.message;
+if(typeof Element!=='undefined'&&v instanceof Element)return'<'+v.tagName.toLowerCase()+(v.id?'#'+v.id:'')+(v.className&&typeof v.className==='string'?'.'+v.className.trim().split(/\\s+/).join('.'):'')+'>';
+if(seen.indexOf(v)>-1)return'[Circular]';if(d>3)return Array.isArray(v)?'[…]':'{…}';seen.push(v);
+if(Array.isArray(v))return'['+v.slice(0,100).map(function(x){return s(x,d+1,seen)}).join(', ')+(v.length>100?', …':'')+']';
+if(v instanceof Map)return'Map('+v.size+')';if(v instanceof Set)return'Set('+v.size+')';if(v instanceof Date)return v.toISOString();
+var k=Object.keys(v).slice(0,50);return(v.constructor&&v.constructor!==Object&&v.constructor.name?v.constructor.name+' ':'')+'{'+k.map(function(x){return x+': '+s(v[x],d+1,seen)}).join(', ')+'}';
+}catch(e){return String(v)}}
+function send(type,args){try{P.postMessage({__pg:1,run:R,type:type,message:[].map.call(args,function(a){return s(a)}).join(' ')},'*')}catch(e){}}
+['log','info','warn','error','debug'].forEach(function(t){var o=console[t];console[t]=function(){send(t,arguments);try{o.apply(console,arguments)}catch(e){}}});
+var ot=console.table;console.table=function(d){send('log',[d]);try{ot.apply(console,arguments)}catch(e){}};
+var oc=console.clear;console.clear=function(){try{P.postMessage({__pg:1,run:R,type:'clear'},'*')}catch(e){}};
+window.addEventListener('error',function(e){var ln=e.lineno&&e.lineno>=L?' (JS línea '+(e.lineno-L+1)+')':'';send('error',['✖ '+(e.message||'Error')+ln]);});
+window.addEventListener('unhandledrejection',function(e){var r=e.reason;send('error',['✖ Promesa rechazada sin manejar: '+(r&&r.message?r.message:s(r))]);});
+window.addEventListener('load',function(){setTimeout(function(){try{P.postMessage({__pg:1,run:R,type:'ready'},'*')}catch(e){}},0)});
+})();<\/script>`;
+  },
+  build(files, runId) {
+    const safeJs = files.js.replace(/<\/script/gi, '<\\/script');
+    const head = `<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n` +
+      (runId != null ? '__CAPTURE__\n' : '') + `<style>\n${files.css}\n</style>\n</head>\n<body>\n${files.html}\n<script>\n`;
+    // la línea donde empieza el JS del usuario se calcula ya con el script de captura insertado
+    let full = head.replace('__CAPTURE__', runId != null ? this.capture(runId, '__JSLINE__') : '');
+    full = full.replace('__JSLINE__', full.split('\n').length);
+    return full + safeJs + `\n<\/script>\n</body>\n</html>`;
+  },
+  exportDoc(p) {
+    return `<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="UTF-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${esc(p.name)}</title>\n<style>\n${p.css}\n</style>\n</head>\n<body>\n${p.html}\n<script>\n${p.js.replace(/<\/script/gi, '<\\/script')}\n<\/script>\n</body>\n</html>\n`;
+  },
+  run(source = 'manual') {
+    const id = ++this.runId; const files = App.files();
+    if (!Konsole.keep) Konsole.clear();
+    Konsole.push('system', `▶ Ejecución #${id}${source === 'auto' ? ' (automática)' : source === 'mcp' ? ' (solicitada por MCP)' : ''}`, id);
+    this.startedAt = performance.now();
+    if (this.pending) this.pending.resolve({ ok: false, runId: this.pending.id, superseded: true });
+    const p = {}; p.promise = new Promise(res => (p.resolve = res)); p.id = id; this.pending = p;
+    p.timer = setTimeout(() => this.finish(id, true), 5000);
+    $('#preview').srcdoc = this.build(files, id);
+    const f = $('#runFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+    return p.promise;
+  },
+  finish(id, timedOut) {
+    const p = this.pending; if (!p || p.id !== id) return;
+    clearTimeout(p.timer); this.pending = null;
+    const ms = Math.round(performance.now() - this.startedAt);
+    const errors = Konsole.items.filter(i => i.run === id && i.type === 'error').reduce((a, i) => a + i.count, 0);
+    if (timedOut) Konsole.push('warn', `La página tardó más de 5 s en cargar (¿bucle infinito o recursos lentos?)`, id);
+    else Konsole.push('system', `✓ Lista en ${ms} ms${errors ? ` · ${errors} error(es)` : ''}`, id);
+    $('#runInfo').textContent = `Ejecución #${id} · ${ms} ms`;
+    p.resolve({ ok: !timedOut && errors === 0, runId: id, durationMs: ms, errors, timedOut: !!timedOut });
+  }
+};
+window.addEventListener('message', e => {
+  const d = e.data; if (!d || d.__pg !== 1) return;
+  if (e.source !== $('#preview').contentWindow) return;
+  if (d.run !== Preview.runId) return; // mensajes de ejecuciones antiguas
+  if (d.type === 'ready') return Preview.finish(d.run, false);
+  if (d.type === 'clear') { Konsole.items = Konsole.items.filter(i => i.run !== d.run || i.type === 'system'); Konsole.render(); return; }
+  if (['log', 'info', 'warn', 'error', 'debug'].includes(d.type)) Konsole.push(d.type, String(d.message ?? '').slice(0, 20000), d.run);
+});
+
+/* ---------------------------------------------------------------
+   Proyectos y estado
+   --------------------------------------------------------------- */
+const STARTER = {
+  html: `<main class="card">
+  <h1>Hola, mundo 👋</h1>
+  <p>Edita HTML, CSS y JavaScript y mira el resultado al instante.</p>
+  <button id="btn">Contar clics: <span id="n">0</span></button>
+</main>`,
+  css: `* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #e2e8f0;
+}
+.card {
+  text-align: center;
+  padding: 32px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  max-width: 90vw;
+}
+button {
+  font: inherit;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 10px;
+  background: #3ee6a8;
+  color: #04140d;
+  font-weight: 600;
+  cursor: pointer;
+}`,
+  js: `const btn = document.getElementById('btn');
+const n = document.getElementById('n');
+let clics = 0;
+
+btn.addEventListener('click', () => {
+  clics++;
+  n.textContent = clics;
+  console.log('Clic número', clics);
+});
+
+console.log('¡Playground listo!');`
+};
+const App = {
+  project: null, dirty: false, autosave: prefs.get('autosave', true), saving: null,
+  files() { return { html: Editors.get('html'), css: Editors.get('css'), js: Editors.get('js') }; },
+  snapshot() { return { ...this.project, ...this.files() }; },
+  newProject(name, blank = false) {
+    const now = Date.now();
+    return { id: uid(), name: (name || 'Proyecto sin título').trim().slice(0, 80) || 'Proyecto sin título', html: blank ? '' : STARTER.html, css: blank ? '' : STARTER.css, js: blank ? '' : STARTER.js, createdAt: now, updatedAt: now };
+  },
+  load(p) {
+    this.project = { ...p };
+    for (const f of FILES) Editors.set(f, p[f] ?? '');
+    $('#projName').value = p.name; document.title = `${p.name} · Mi Playground`;
+    prefs.set('lastId', p.id); this.setDirty(false);
+    Preview.run('load');
+  },
+  onEdit(f) {
+    UI.meta(f); this.setDirty(true);
+    if ($('#autoRun').checked) this.autoRun();
+    if (this.autosave) this.autoSave();
+  },
+  autoRun: debounce(() => Preview.run('auto'), 650),
+  autoSave: debounce(() => App.save({ silent: true }), 1500),
+  setDirty(d) {
+    this.dirty = d;
+    const st = $('#saveState'); st.className = 'save-state ' + (d ? 'dirty' : 'saved');
+    $('#saveText').textContent = d ? 'Sin guardar' : 'Guardado';
+  },
+  async save({ silent = false } = {}) {
+    if (!this.project) throw new Error('No hay proyecto abierto');
+    this.autoSave.cancel();
+    const st = $('#saveState'); st.className = 'save-state saving'; $('#saveText').textContent = 'Guardando…';
+    try {
+      const p = { ...this.snapshot(), updatedAt: Date.now() };
+      await Store.put(p); this.project = p; this.setDirty(false);
+      if (!silent) toast('Proyecto guardado', 'ok');
+      return p;
+    } catch (e) {
+      this.setDirty(true); toast('No se pudo guardar: ' + e.message, 'err'); throw e;
+    }
+  },
+  async create(name, opts = {}) {
+    if (this.dirty) await this.save({ silent: true }).catch(() => {});
+    const p = this.newProject(name, opts.blank);
+    if (opts.files) Object.assign(p, opts.files);
+    await Store.put(p); this.load(p);
+    return p;
+  },
+  async open(id) {
+    if (this.project && id === this.project.id) return this.project;
+    const p = await Store.get(id); if (!p) throw new Error('Proyecto no encontrado');
+    if (this.dirty) await this.save({ silent: true }).catch(() => {});
+    this.load(p); return p;
+  },
+  async rename(name) {
+    name = String(name || '').trim().slice(0, 80);
+    if (!name) { $('#projName').value = this.project.name; return; }
+    this.project.name = name; $('#projName').value = name; document.title = `${name} · Mi Playground`;
+    await this.save({ silent: true });
+  },
+  async remove(id) {
+    await Store.del(id);
+    if (this.project && id === this.project.id) {
+      const rest = await Store.all();
+      if (rest.length) this.load(rest[0]); else { const p = this.newProject('Mi primer proyecto'); await Store.put(p); this.load(p); }
+    }
+  }
+};
+
+/* ---------------------------------------------------------------
+   PlaygroundAPI — API pública (la usa el puente MCP)
+   Todas las funciones devuelven Promesas con datos JSON simples.
+   --------------------------------------------------------------- */
+const PlaygroundAPI = Object.freeze({
+  version: '1.0.0',
+  async getProject() {
+    const p = App.snapshot();
+    return { id: p.id, name: p.name, createdAt: p.createdAt, updatedAt: p.updatedAt, unsavedChanges: App.dirty, files: { html: p.html, css: p.css, js: p.js } };
+  },
+  async getFiles() { return App.files(); },
+  async getFile(name) { const f = normalizeFileName(name); return { name: f, content: Editors.get(f) }; },
+  async setFile(name, content) {
+    const f = normalizeFileName(name);
+    if (typeof content !== 'string') throw new Error('"content" debe ser texto');
+    if (content.length > 2_000_000) throw new Error('Archivo demasiado grande (máx. 2 MB)');
+    Editors.set(f, content); App.onEdit(f);
+    return { name: f, length: content.length, lines: content.split('\n').length };
+  },
+  async createProject(name) {
+    const p = await App.create(name || 'Proyecto sin título', { blank: true });
+    return { id: p.id, name: p.name };
+  },
+  async saveProject() { const p = await App.save({ silent: true }); return { id: p.id, name: p.name, savedAt: p.updatedAt }; },
+  async runCode() { App.autoRun.cancel(); return await Preview.run('mcp'); },
+  async getConsole() { return Konsole.items.map(i => ({ type: i.type, message: i.message, count: i.count, time: new Date(i.time).toISOString(), run: i.run })); },
+  async clearConsole() { const n = Konsole.items.length; Konsole.clear(); return { cleared: n }; }
+});
+window.PlaygroundAPI = PlaygroundAPI;
+
+/* Descripción de las funciones (también se envía al servidor MCP) */
+const API_SPEC = [
+  { name: 'getProject', params: {}, desc: 'Proyecto actual: id, nombre, fechas, cambios sin guardar y archivos.' },
+  { name: 'getFiles', params: {}, desc: 'Contenido de html, css y js.' },
+  { name: 'getFile', params: { name: 'html | css | js' }, desc: 'Lee un archivo.' },
+  { name: 'setFile', params: { name: 'html | css | js', content: 'string' }, desc: 'Reemplaza el contenido de un archivo (actualiza la vista si Auto está activo).' },
+  { name: 'createProject', params: { name: 'string' }, desc: 'Crea un proyecto vacío y lo abre (guarda antes el actual).' },
+  { name: 'saveProject', params: {}, desc: 'Guarda el proyecto actual en el navegador.' },
+  { name: 'runCode', params: {}, desc: 'Ejecuta el código y espera a que la vista previa cargue. Devuelve errores y duración.' },
+  { name: 'getConsole', params: {}, desc: 'Mensajes de consola capturados.' },
+  { name: 'clearConsole', params: {}, desc: 'Limpia la consola.' }
+];
+const API_ARGS = { getFile: p => [p.name], setFile: p => [p.name, p.content], createProject: p => [p.name] };
+
+/* ---------------------------------------------------------------
+   Puente MCP (cliente WebSocket hacia un servidor MCP local)
+   Estado inicial: No conectado. Solo pasa a "Conectado" tras un
+   apretón de manos real con el servidor.
+   --------------------------------------------------------------- */
+const Bridge = {
+  ws: null, state: 'disconnected', detail: '', log: [], want: null, retries: 0, retryTimer: null, everConnected: false,
+  setState(s, detail = '') {
+    this.state = s; this.detail = detail;
+    const label = { disconnected: 'No conectado', connecting: 'Conectando…', connected: 'Conectado', error: 'Error de conexión' }[s];
+    ['#mcpPill', '#mcpBox', '#mcpStatusBtn'].forEach(sel => $(sel).dataset.mcp = s);
+    $('#mcpStateTxt').textContent = label; $('#mcpDetail').textContent = detail ? '· ' + detail : '';
+    $('#mcpStatusTxt').textContent = 'MCP: ' + label;
+    $('#mcpConnect').disabled = s === 'connecting' || s === 'connected';
+    $('#mcpDisconnect').disabled = !(s === 'connecting' || s === 'connected');
+  },
+  addLog(text, cls = '') {
+    this.log.push({ text, cls, t: new Date().toLocaleTimeString('es-MX', { hour12: false }) });
+    if (this.log.length > 100) this.log.shift();
+    $('#mcpLog').innerHTML = this.log.map(l => `<div class="${l.cls}">${l.t}  ${esc(l.text)}</div>`).join('');
+    $('#mcpLog').scrollTop = 1e9;
+  },
+  // connect(): conexión iniciada por el usuario. Guarda URL y código SOLO en memoria para reintentar.
+  connect(url, token) {
+    if (!/^wss?:\/\//i.test(url)) { toast('La dirección debe empezar con ws:// o wss://', 'err'); return; }
+    if (!token) { toast('Escribe el código de emparejamiento', 'warn'); $('#mcpToken').focus(); return; }
+    this.stopRetry(); this.closeSocket();
+    this.want = { url, token }; this.retries = 0; this.everConnected = false;
+    this.open();
+  },
+  open() {
+    if (!this.want) return;
+    const { url, token } = this.want;
+    this.setState('connecting', this.retries ? `reintento ${this.retries}` : url);
+    this.addLog((this.retries ? 'Reconectando a ' : 'Conectando a ') + url);
+    let ws;
+    try { ws = new WebSocket(url); } catch (e) { this.setState('error', e.message); this.addLog('Error: ' + e.message, 'bad'); this.want = null; return; }
+    this.ws = ws;
+    // los servidores gratuitos pueden tardar ~1 min en "despertar"
+    let hsTimer = setTimeout(() => { if (this.ws === ws && this.state === 'connecting') { this.addLog('El servidor no respondió a tiempo', 'bad'); try { ws.close(); } catch {} } }, 75000);
+    ws.onopen = () => {
+      clearTimeout(hsTimer);
+      hsTimer = setTimeout(() => { if (this.ws === ws && this.state === 'connecting') { this.addLog('El servidor no respondió al saludo', 'bad'); try { ws.close(); } catch {} } }, 8000);
+      ws.send(JSON.stringify({ type: 'hello', token, client: 'mi-playground', apiVersion: PlaygroundAPI.version, functions: API_SPEC.map(f => f.name) }));
+    };
+    ws.onmessage = async ev => {
+      if (this.ws !== ws) return;
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === 'welcome') {
+        clearTimeout(hsTimer); const again = this.everConnected; this.everConnected = true; this.retries = 0;
+        this.setState('connected', m.server || ''); this.addLog((again ? 'Reconectado con ' : 'Emparejado con ') + (m.server || 'servidor MCP'), 'ok');
+        toast(again ? 'Claude MCP reconectado' : 'Claude MCP conectado', 'ok'); prefs.set('mcpUrl', url);
+      }
+      else if (m.type === 'denied') { clearTimeout(hsTimer); this.addLog('Rechazado: ' + (m.message || 'código incorrecto'), 'bad'); this.want = null; this.setState('error', 'código rechazado'); try { ws.close(); } catch {} }
+      else if (m.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
+      else if (m.type === 'call' && this.state === 'connected') this.handleCall(m);
+    };
+    ws.onerror = () => { if (this.ws === ws) this.addLog('No se pudo conectar con el servidor MCP', 'bad'); };
+    ws.onclose = ev => {
+      clearTimeout(hsTimer); if (this.ws !== ws) return; this.ws = null;
+      if (!this.want) { if (this.state !== 'error') this.setState('disconnected'); return; }
+      // reconexión automática con espera creciente (2, 4, 8… hasta 30 s)
+      this.retries++;
+      if (!this.everConnected && this.retries > 3) { this.want = null; this.setState('error', 'no se pudo conectar'); toast('No se pudo conectar con el servidor MCP', 'err'); return; }
+      const wait = Math.min(30, 2 ** this.retries);
+      this.setState('connecting', `conexión perdida, reintento en ${wait} s`);
+      if (this.everConnected && this.retries === 1) toast('Se perdió la conexión con Claude MCP. Reintentando…', 'warn');
+      this.retryTimer = setTimeout(() => this.open(), wait * 1000);
+    };
+  },
+  stopRetry() { clearTimeout(this.retryTimer); this.retryTimer = null; },
+  closeSocket() { const ws = this.ws; this.ws = null; if (ws) { try { ws.close(1000); } catch {} } },
+  // al volver a la pestaña (p. ej. en Android) se reconecta de inmediato
+  wake() { if (this.want && !this.ws) { this.stopRetry(); this.open(); } },
+  disconnect(silent) { this.want = null; this.stopRetry(); this.closeSocket(); if (!silent) { this.setState('disconnected'); this.addLog('Desconectado'); } },
+  async handleCall(m) {
+    const { id, method, params = {} } = m;
+    const reply = o => this.ws && this.ws.readyState === 1 && this.ws.send(JSON.stringify({ type: 'result', id, ...o }));
+    if (!API_SPEC.some(f => f.name === method)) { this.addLog(`✖ ${method}: no permitido`, 'bad'); return reply({ ok: false, error: `Función no permitida: ${method}` }); }
+    try {
+      const args = (API_ARGS[method] || (() => []))(params || {});
+      const result = await PlaygroundAPI[method](...args);
+      this.addLog(`✓ ${method}(${method === 'setFile' ? params.name : method === 'getFile' ? params.name : ''})`, 'ok');
+      if (method === 'setFile') Konsole.push('mcp', `Claude modificó ${LANG_LABEL[normalizeFileName(params.name)]}`, Preview.runId);
+      reply({ ok: true, result });
+    } catch (e) { this.addLog(`✖ ${method}: ${e.message}`, 'bad'); reply({ ok: false, error: e.message }); }
+  }
+};
+
+/* ---------------------------------------------------------------
+   UI
+   --------------------------------------------------------------- */
+const UI = {
+  view: 'html',
+  meta(f) {
+    const v = Editors.get(f); const lines = v ? v.split('\n').length : 0;
+    $(`[data-meta="${f}"]`).textContent = `${lines} líneas · ${v.length} car.`;
+  },
+  engine() { $('#engineTxt').textContent = Editors.engine === 'cm' ? 'Editor: CodeMirror 6' : 'Editor ligero (sin conexión)'; },
+  setView(v) {
+    this.view = v;
+    $$('.mtab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+    $$('.workspace .panel').forEach(p => p.classList.toggle('active', p.dataset.pane === v));
+    prefs.set('view', v);
+  },
+  focus(v) {
+    if (matchMedia('(max-width: 900px)').matches) this.setView(v);
+    if (FILES.includes(v)) setTimeout(() => Editors.map[v].focus(), 30);
+  },
+  async renderProjects() {
+    const q = $('#pSearch').value.trim().toLowerCase();
+    let list = [];
+    try { list = await Store.all(); } catch (e) { toast('Error al leer proyectos: ' + e.message, 'err'); }
+    const items = list.filter(p => !q || p.name.toLowerCase().includes(q));
+    $('#pList').innerHTML = items.length ? items.map(p => `
+      <div class="p-item ${p.id === App.project?.id ? 'current' : ''}" data-id="${p.id}">
+        <div class="p-thumb">${esc((p.name.trim()[0] || '?').toUpperCase())}</div>
+        <div class="p-main" data-open title="Abrir"><div class="p-name">${esc(p.name)}${p.id === App.project?.id ? '<span class="tag">abierto</span>' : ''}</div>
+          <div class="p-sub">Editado ${timeAgo(p.updatedAt)} · ${((p.html.length + p.css.length + p.js.length) / 1024).toFixed(1)} KB</div></div>
+        <div class="p-act">
+          <button class="tbtn" data-rename title="Cambiar nombre"><svg class="i"><use href="#i-edit"/></svg></button>
+          <button class="tbtn" data-export title="Exportar HTML"><svg class="i"><use href="#i-download"/></svg></button>
+          <button class="tbtn" data-del title="Eliminar" style="color:var(--err)"><svg class="i"><use href="#i-trash"/></svg></button>
+        </div>
+      </div>`).join('') : `<div class="empty" style="height:auto;padding:30px">${q ? 'Ningún proyecto coincide.' : 'Aún no hay proyectos.'}</div>`;
+  }
+};
+
+/* Acciones de alto nivel (UI) */
+const Actions = {
+  async newProject() {
+    const name = await Dialog.prompt({ title: 'Nuevo proyecto', message: 'Ponle un nombre:', value: 'Proyecto sin título', okText: 'Crear' });
+    if (name === null) return;
+    try { await App.create(name); Modal.close($('#mProjects')); toast(`Proyecto “${App.project.name}” creado`, 'ok'); UI.focus('html'); }
+    catch (e) { toast('No se pudo crear: ' + e.message, 'err'); }
+  },
+  async rename(id = App.project.id) {
+    const p = id === App.project.id ? App.project : await Store.get(id);
+    const name = await Dialog.prompt({ title: 'Cambiar nombre', message: 'Nuevo nombre del proyecto:', value: p.name, okText: 'Guardar' });
+    if (name === null || !name.trim()) return;
+    try {
+      if (id === App.project.id) await App.rename(name); else await Store.put({ ...p, name: name.trim().slice(0, 80), updatedAt: Date.now() });
+      toast('Nombre actualizado', 'ok'); if ($('#mProjects').classList.contains('open')) UI.renderProjects();
+    } catch (e) { toast('No se pudo renombrar: ' + e.message, 'err'); }
+  },
+  async remove(id = App.project.id) {
+    const p = id === App.project.id ? App.project : await Store.get(id);
+    const ok = await Dialog.confirm({ title: 'Eliminar proyecto', message: `¿Eliminar “${p.name}” definitivamente? Esta acción no se puede deshacer.`, okText: 'Eliminar', danger: true });
+    if (!ok) return;
+    try { await App.remove(id); toast(`“${p.name}” eliminado`, 'ok'); if ($('#mProjects').classList.contains('open')) UI.renderProjects(); }
+    catch (e) { toast('No se pudo eliminar: ' + e.message, 'err'); }
+  },
+  async exportProject(id = App.project.id) {
+    try {
+      const p = id === App.project.id ? App.snapshot() : await Store.get(id);
+      const blob = new Blob([Preview.exportDoc(p)], { type: 'text/html;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = (p.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'proyecto') + '.html';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+      toast(`Exportado como ${a.download}`, 'ok');
+    } catch (e) { toast('No se pudo exportar: ' + e.message, 'err'); }
+  },
+  importFile() { $('#fileInput').value = ''; $('#fileInput').click(); },
+  async handleImport(file) {
+    if (!file) return;
+    if (file.size > 3_000_000) return toast('El archivo es demasiado grande (máx. 3 MB)', 'err');
+    try {
+      const text = await file.text(); const ext = (file.name.split('.').pop() || '').toLowerCase();
+      if (ext === 'css' || ext === 'js') {
+        const f = ext === 'css' ? 'css' : 'js';
+        const ok = await Dialog.confirm({ title: 'Importar ' + ext.toUpperCase(), message: `¿Reemplazar el ${LANG_LABEL[f]} del proyecto actual con “${file.name}”?`, okText: 'Reemplazar' });
+        if (!ok) return; Editors.set(f, text); App.onEdit(f); return toast(`${file.name} importado`, 'ok');
+      }
+      const files = parseHtmlFile(text);
+      const name = file.name.replace(/\.html?$/i, '') || 'Importado';
+      await App.create(name, { files }); Modal.close($('#mProjects'));
+      toast(`“${name}” importado como proyecto nuevo`, 'ok');
+    } catch (e) { toast('No se pudo importar: ' + e.message, 'err'); }
+  },
+  async copy(f) { (await copyText(Editors.get(f))) ? toast(`${LANG_LABEL[f]} copiado`, 'ok') : toast('No se pudo copiar', 'err'); },
+  clear(f) {
+    const prev = Editors.get(f); if (!prev) return toast(`${LANG_LABEL[f]} ya está vacío`, 'info');
+    Editors.set(f, ''); App.onEdit(f);
+    toast(`${LANG_LABEL[f]} limpiado`, 'info', { action: { label: 'Deshacer', run: () => { Editors.set(f, prev); App.onEdit(f); } } });
+  },
+  fullscreen() {
+    const el = $('#previewPanel');
+    if (document.fullscreenElement) return document.exitFullscreen();
+    if (el.classList.contains('is-fs')) return el.classList.remove('is-fs');
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => el.classList.add('is-fs'));
+    else el.classList.add('is-fs');
+  },
+  async copyMcpInfo() {
+    const info = {
+      service: 'Playground MCP', app: 'Mi Playground', apiVersion: PlaygroundAPI.version,
+      status: Bridge.state, bridge: { transport: 'WebSocket', defaultUrl: 'ws://127.0.0.1:8787', auth: 'código de emparejamiento (PLAYGROUND_TOKEN), nunca guardado en el navegador' },
+      protocol: {
+        'navegador → servidor': { type: 'hello', token: '<código>', client: 'mi-playground', apiVersion: '1.0.0', functions: ['…'] },
+        'servidor → navegador (ok)': { type: 'welcome', server: 'Playground MCP' },
+        'servidor → navegador (rechazo)': { type: 'denied', message: '…' },
+        'servidor → navegador (llamada)': { type: 'call', id: '<id>', method: '<función>', params: {} },
+        'navegador → servidor (respuesta)': { type: 'result', id: '<id>', ok: true, result: {}, error: '<solo si ok=false>' },
+        keepalive: { 'servidor → navegador': { type: 'ping' }, 'navegador → servidor': { type: 'pong' } }
+      },
+      functions: API_SPEC.map(f => ({ name: f.name, params: f.params, description: f.desc })),
+      browserGlobal: 'window.PlaygroundAPI (todas las funciones devuelven Promise)'
+    };
+    (await copyText(JSON.stringify(info, null, 2))) ? toast('Información técnica copiada', 'ok') : toast('No se pudo copiar', 'err');
+  }
+};
+
+/* Importación: separa <style>, <script> y cuerpo de un HTML completo */
+function parseHtmlFile(text) {
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  let css = '', js = '';
+  doc.querySelectorAll('style').forEach(s => { css += (css ? '\n\n' : '') + s.textContent.trim(); s.remove(); });
+  doc.querySelectorAll('script:not([src])').forEach(s => {
+    const t = (s.getAttribute('type') || '').toLowerCase();
+    if (!t || t === 'text/javascript' || t === 'application/javascript') { js += (js ? '\n\n' : '') + s.textContent.trim(); s.remove(); }
+  });
+  // recursos externos del <head> (fuentes, librerías) se conservan al inicio del HTML
+  const headExtras = [...doc.head.querySelectorAll('link[rel="stylesheet"], script[src], link[rel="preconnect"]')].map(n => n.outerHTML).join('\n');
+  const body = doc.body.innerHTML.trim();
+  const html = (headExtras ? headExtras + '\n' : '') + (body || (!/<body/i.test(text) && !css && !js ? text : body));
+  return { html, css, js };
+}
+
+/* ---------------------------------------------------------------
+   Eventos
+   --------------------------------------------------------------- */
+function bindUI() {
+  $('#btnRun').onclick = () => { App.autoRun.cancel(); Preview.run('manual'); if (matchMedia('(max-width: 900px)').matches) UI.setView('preview'); };
+  $('#btnRefresh').onclick = () => Preview.run('manual');
+  $('#btnSave').onclick = () => App.save().catch(() => {});
+  $('#btnProjects').onclick = () => { $('#pSearch').value = ''; UI.renderProjects(); Modal.open('mProjects'); };
+  $('#pSearch').oninput = debounce(() => UI.renderProjects(), 120);
+  $('#pNew').onclick = () => Actions.newProject();
+  $('#pList').onclick = async e => {
+    const item = e.target.closest('.p-item'); if (!item) return; const id = item.dataset.id;
+    if (e.target.closest('[data-del]')) return Actions.remove(id);
+    if (e.target.closest('[data-rename]')) return Actions.rename(id);
+    if (e.target.closest('[data-export]')) return Actions.exportProject(id);
+    if (e.target.closest('[data-open]')) { try { await App.open(id); Modal.close($('#mProjects')); toast(`Abierto “${App.project.name}”`, 'ok'); } catch (er) { toast(er.message, 'err'); } }
+  };
+  // menú
+  const menu = $('#menu'), mb = $('#btnMenu');
+  const closeMenu = () => { menu.classList.remove('open'); mb.setAttribute('aria-expanded', 'false'); };
+  mb.onclick = e => { e.stopPropagation(); const o = !menu.classList.contains('open'); menu.classList.toggle('open', o); mb.setAttribute('aria-expanded', o); };
+  document.addEventListener('click', e => { if (!e.target.closest('.menu-wrap')) closeMenu(); });
+  menu.onclick = e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return; closeMenu();
+    ({ new: () => Actions.newProject(), rename: () => Actions.rename(), import: () => Actions.importFile(), export: () => Actions.exportProject(),
+      mcp: () => Modal.open('mMcp'), shortcuts: () => Modal.open('mKeys'), delete: () => Actions.remove() })[b.dataset.act]();
+  };
+  $('#fileInput').onchange = e => Actions.handleImport(e.target.files[0]);
+  // nombre en la barra superior
+  const pn = $('#projName');
+  pn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pn.blur(); } if (e.key === 'Escape') { pn.value = App.project.name; pn.blur(); } });
+  pn.addEventListener('blur', () => { if (pn.value.trim() !== App.project.name) App.rename(pn.value).then(() => toast('Nombre actualizado', 'ok')).catch(e => toast(e.message, 'err')); });
+  // editores
+  $$('[data-copy]').forEach(b => b.onclick = () => Actions.copy(b.dataset.copy));
+  $$('[data-clear]').forEach(b => b.onclick = () => Actions.clear(b.dataset.clear));
+  // vista previa
+  $('#autoRun').checked = prefs.get('autoRun', true);
+  $('#autoRun').onchange = e => { prefs.set('autoRun', e.target.checked); toast(e.target.checked ? 'Actualización automática activada' : 'Actualización automática desactivada', 'info'); };
+  const setDevice = m => { $('#stage').classList.toggle('mobile', m); $('#vMob').setAttribute('aria-pressed', m); $('#vDesk').setAttribute('aria-pressed', !m); prefs.set('mobileView', m); };
+  $('#vDesk').onclick = () => setDevice(false); $('#vMob').onclick = () => setDevice(true);
+  setDevice(prefs.get('mobileView', false));
+  $('#btnFs').onclick = () => Actions.fullscreen(); $('#btnFsExit').onclick = () => Actions.fullscreen();
+  // consola
+  $$('.chip').forEach(c => c.onclick = () => { Konsole.filter = c.dataset.filter; $$('.chip').forEach(x => x.setAttribute('aria-pressed', x === c)); Konsole.render(); });
+  $('#btnConClear').onclick = () => { Konsole.clear(); toast('Consola limpia', 'info'); };
+  const keepBtn = $('#btnKeep'); const syncKeep = () => { keepBtn.classList.toggle('on', Konsole.keep); keepBtn.title = Konsole.keep ? 'Conservando mensajes entre ejecuciones (clic para desactivar)' : 'Conservar mensajes entre ejecuciones'; };
+  keepBtn.onclick = () => { Konsole.keep = !Konsole.keep; prefs.set('keepConsole', Konsole.keep); syncKeep(); toast(Konsole.keep ? 'Se conservarán los mensajes' : 'La consola se limpia en cada ejecución', 'info'); };
+  syncKeep();
+  // pestañas móviles
+  $$('.mtab').forEach(t => t.onclick = () => UI.setView(t.dataset.view));
+  // barra de estado
+  const syncAutosave = () => $('#autosaveTxt').textContent = 'Autoguardado: ' + (App.autosave ? 'sí' : 'no');
+  $('#autosaveBtn').onclick = () => { App.autosave = !App.autosave; if (!App.autosave) App.autoSave.cancel(); prefs.set('autosave', App.autosave); syncAutosave(); toast(App.autosave ? 'Guardado automático activado' : 'Guardado automático desactivado', 'info'); if (App.autosave && App.dirty) App.autoSave(); };
+  syncAutosave();
+  $('#engineBtn').onclick = async () => {
+    if (Editors.engine === 'cm') { prefs.set('engine', 'lite'); Editors.mount('lite'); toast('Usando el editor ligero', 'info'); }
+    else { prefs.set('engine', 'auto'); toast('Cargando CodeMirror 6…', 'info'); tryCodeMirror(true); }
+  };
+  $('#mcpStatusBtn').onclick = $('#mcpPill').onclick = () => Modal.open('mMcp');
+  // MCP
+  $('#mcpUrl').value = prefs.get('mcpUrl', 'ws://127.0.0.1:8787');
+  $('#mcpConnect').onclick = () => Bridge.connect($('#mcpUrl').value.trim(), $('#mcpToken').value.trim());
+  $('#mcpDisconnect').onclick = () => Bridge.disconnect();
+  $('#mcpToken').addEventListener('keydown', e => { if (e.key === 'Enter') $('#mcpConnect').click(); });
+  $('#mcpCopy').onclick = () => Actions.copyMcpInfo();
+  $('#fnList').innerHTML = API_SPEC.map(f => `<div class="fn"><code>${f.name}(${Object.keys(f.params).join(', ')})</code><span>${esc(f.desc)}</span></div>`).join('');
+  // redimensionar
+  const rz = $('#resizer');
+  rz.addEventListener('pointerdown', e => {
+    rz.setPointerCapture(e.pointerId); rz.classList.add('drag'); $('#preview').style.pointerEvents = 'none';
+    const ws = $('#workspace').getBoundingClientRect();
+    const move = ev => { const pct = Math.min(85, Math.max(15, (ev.clientY - ws.top) / ws.height * 100)); document.documentElement.style.setProperty('--split', pct + '%'); };
+    const up = () => { rz.classList.remove('drag'); $('#preview').style.pointerEvents = ''; rz.removeEventListener('pointermove', move); prefs.set('split', getComputedStyle(document.documentElement).getPropertyValue('--split').trim()); };
+    rz.addEventListener('pointermove', move); rz.addEventListener('pointerup', up, { once: true }); rz.addEventListener('pointercancel', up, { once: true });
+  });
+  rz.addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return; const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--split')) || 55; document.documentElement.style.setProperty('--split', Math.min(85, Math.max(15, cur + (e.key === 'ArrowUp' ? -3 : 3))) + '%'); });
+  const sp = prefs.get('split', null); if (sp) document.documentElement.style.setProperty('--split', sp);
+
+  // atajos
+  document.addEventListener('keydown', e => {
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (e.key === 'Escape') {
+      if ($('#menu').classList.contains('open')) return closeMenu();
+      if (Modal.top()) { e.preventDefault(); return Modal.close(); }
+      if (document.fullscreenElement) return document.exitFullscreen().catch(() => {});
+      if ($('#previewPanel').classList.contains('is-fs')) return $('#previewPanel').classList.remove('is-fs');
+    }
+    if (Modal.top() && Modal.top().id === 'mDialog') return;
+    if (mod && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); return App.save().catch(() => {}); }
+    if (mod && e.key === 'Enter') { e.preventDefault(); App.autoRun.cancel(); return Preview.run('manual'); }
+    if (e.altKey && !mod && !e.shiftKey) {
+      const k = e.code;
+      const map = { KeyN: () => Actions.newProject(), KeyO: () => $('#btnProjects').click(), KeyE: () => Actions.exportProject(), KeyM: () => Modal.open('mMcp'),
+        KeyH: () => Modal.open('mKeys'), KeyL: () => { Konsole.clear(); toast('Consola limpia', 'info'); },
+        Digit1: () => UI.focus('html'), Digit2: () => UI.focus('css'), Digit3: () => UI.focus('js'), Digit4: () => UI.setView('preview'), Digit5: () => UI.setView('console') };
+      if (map[k]) { e.preventDefault(); map[k](); }
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {});
+  window.addEventListener('beforeunload', e => { if (App.dirty) { App.save({ silent: true }).catch(() => {}); e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && App.dirty && App.autosave) App.save({ silent: true }).catch(() => {}); if (!document.hidden) Bridge.wake(); });
+  window.addEventListener('online', () => Bridge.wake());
+  window.addEventListener('error', e => { if (e.filename && !e.filename.startsWith('about:')) toast('Error interno: ' + e.message, 'err'); });
+  window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast('Error: ' + (e.reason?.message || e.reason), 'err'); });
+}
+
+async function tryCodeMirror(announce) {
+  try {
+    CM = CM || await loadCodeMirror();
+    const focused = FILES.find(f => Editors.map[f] && $('#ed-' + f).contains(document.activeElement));
+    Editors.mount('cm'); if (focused) Editors.map[focused].focus();
+    if (announce) toast('CodeMirror 6 activado', 'ok');
+  } catch (e) {
+    console.warn('[Playground] CodeMirror no disponible:', e.message);
+    if (announce) toast('No se pudo cargar CodeMirror (sin conexión). Se mantiene el editor ligero.', 'warn');
+    prefs.set('engine', 'auto');
+  }
+}
+
+/* ---------------------------------------------------------------
+   Arranque
+   --------------------------------------------------------------- */
+(async function boot() {
+  Bridge.setState('disconnected');
+  Konsole.render();
+  await Store.init();
+  $('#storeTxt').textContent = Store.mode === 'indexeddb' ? 'IndexedDB' : 'localStorage';
+  bindUI();
+  Editors.mount('lite', { html: '', css: '', js: '' });
+  let p = null;
+  try {
+    const last = prefs.get('lastId', null);
+    p = last ? await Store.get(last) : null;
+    if (!p) { const all = await Store.all(); p = all[0]; }
+    if (!p) { p = App.newProject('Mi primer proyecto'); await Store.put(p); }
+  } catch (e) { toast('Error de almacenamiento: ' + e.message, 'err'); p = App.newProject('Mi primer proyecto'); }
+  App.load(p);
+  FILES.forEach(f => UI.meta(f));
+  UI.setView(prefs.get('view', 'html'));
+  if (prefs.get('engine', 'auto') !== 'lite') tryCodeMirror(false);
+})();
+</script>
+</body>
+</html>
