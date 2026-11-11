@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b0d12">
+<meta name="description" content="Mi Playground: editor web con proyectos, carpetas y archivos, vista previa en vivo, consola y conexión con Claude por MCP.">
+<title>Mi Playground</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================ TOKENS */
+:root{
+  --bg:#0b0d12; --bg-2:#0f1218; --panel:#12151d; --panel-2:#171b25; --panel-3:#1d2230;
+  --border:#232938; --border-2:#2e3548;
+  --text:#e7eaf0; --text-2:#b7bfce; --muted:#7f889b; --faint:#555e72;
+  --accent:#3ee6a8; --accent-2:#22c38a; --accent-ink:#04140d; --accent-soft:rgba(62,230,168,.12);
+  --c-html:#ff7a59; --c-css:#5aa9ff; --c-js:#f5d04a; --c-json:#7ee08a; --c-img:#c49bff; --c-md:#9aa4b8;
+  --ok:#3ee6a8; --warn:#f5b84a; --err:#ff5d6c; --info:#7aa7ff;
+  --radius:10px; --radius-sm:7px;
+  --shadow:0 12px 40px rgba(0,0,0,.45), 0 2px 8px rgba(0,0,0,.3);
+  --mono:"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans:Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --code-size:13px; --code-lh:20px;
+  --top-h:52px; --status-h:28px;
+  --side:240px; --out:42%; --con:34%;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.45 var(--sans);overflow:hidden;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+svg.i{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::selection{background:rgba(62,230,168,.28)}
+*::-webkit-scrollbar{width:10px;height:10px}
+*::-webkit-scrollbar-thumb{background:#2a3142;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+*::-webkit-scrollbar-track{background:transparent}
+.view{display:none;height:100vh;height:100dvh}
+.view.on{display:grid}
+
+/* ============================================================ COMUNES */
+.topbar{display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--bg-2);border-bottom:1px solid var(--border);min-width:0}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.logo{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:linear-gradient(135deg,var(--accent),#2bb3ff);color:var(--accent-ink);font:700 13px var(--mono)}
+.brand-name{font-size:15px}
+.grow{flex:1;min-width:0}
+.btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--panel);color:var(--text-2);font-size:13px;font-weight:500;white-space:nowrap;transition:background .15s,border-color .15s,color .15s,transform .08s}
+.btn:hover{background:var(--panel-2);border-color:var(--border-2);color:var(--text)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{background:#5df0bb}
+.btn.danger{color:var(--err);border-color:rgba(255,93,108,.35)}
+.btn.danger:hover{background:rgba(255,93,108,.1)}
+.btn.icon{width:34px;padding:0;justify-content:center}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.tbtn{width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--muted);transition:background .15s,color .15s;flex:none}
+.tbtn:hover{background:var(--panel-3);color:var(--text)}
+.tbtn.on{color:var(--accent);background:var(--accent-soft)}
+.tbtn[disabled]{opacity:.35;pointer-events:none}
+kbd{font:500 11px var(--mono);padding:1px 5px;border-radius:4px;border:1px solid var(--border-2);background:var(--panel-2);color:var(--text-2)}
+.mcp-pill{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px;border-radius:999px;border:1px solid var(--border);background:var(--panel);font-size:12px;color:var(--text-2);font-weight:500;white-space:nowrap}
+.mcp-pill:hover{border-color:var(--border-2);color:var(--text)}
+.state-dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none;transition:background .2s}
+[data-mcp="connecting"] .state-dot{background:var(--warn);animation:pulse 1s infinite}
+[data-mcp="connected"] .state-dot{background:var(--ok);box-shadow:0 0 0 3px rgba(62,230,168,.18)}
+[data-mcp="error"] .state-dot{background:var(--err)}
+@keyframes pulse{50%{opacity:.35}}
+.input{height:38px;padding:0 11px;border-radius:var(--radius-sm);border:1px solid var(--border-2);background:var(--bg-2);font-size:14px;outline:none;transition:border-color .15s;min-width:0}
+.input:focus{border-color:var(--accent)}
+.menu-wrap{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 6px);min-width:240px;background:var(--panel);border:1px solid var(--border-2);border-radius:var(--radius);box-shadow:var(--shadow);padding:6px;z-index:60;opacity:0;transform:translateY(-4px) scale(.98);pointer-events:none;transition:opacity .14s,transform .14s}
+.menu.open{opacity:1;transform:none;pointer-events:auto}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:6px;font-size:13px;color:var(--text-2);text-align:left}
+.menu button:hover{background:var(--panel-2);color:var(--text)}
+.menu button kbd{margin-left:auto}
+.menu button.danger{color:var(--err)}
+.menu hr{border:0;border-top:1px solid var(--border);margin:6px 2px}
+.menu.ctx{position:fixed;top:0;left:0;right:auto;min-width:210px;z-index:90}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;height:100%;color:var(--faint);font:13px var(--sans);text-align:center;padding:20px}
+.empty svg{width:24px;height:24px;opacity:.6}
+
+/* ============================================================ INICIO */
+#home{grid-template-rows:56px minmax(0,1fr)}
+#home>.topbar{grid-row:1}#home>.home-main{grid-row:2}
+.home-main{overflow:auto;padding:28px max(16px,calc((100vw - 1100px)/2)) 60px}
+.home-head{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.home-head h1{margin:0;font-size:24px;letter-spacing:-.02em}
+.home-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.home-tools{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.home-tools .input{width:220px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{position:relative;display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden;cursor:pointer;transition:border-color .15s,transform .15s,box-shadow .15s;animation:fadein .25s ease;text-align:left}
+.card:hover{border-color:var(--border-2);transform:translateY(-2px);box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.card.current{border-color:rgba(62,230,168,.45)}
+.card-thumb{height:92px;display:flex;align-items:flex-end;gap:6px;padding:12px;background:linear-gradient(135deg,var(--h1),var(--h2));position:relative}
+.card-thumb .big{position:absolute;right:14px;top:10px;font:700 30px var(--sans);color:rgba(255,255,255,.85);text-shadow:0 2px 10px rgba(0,0,0,.25)}
+.chip-ext{font:600 10px var(--mono);padding:2px 6px;border-radius:5px;background:rgba(0,0,0,.35);color:#fff;letter-spacing:.03em}
+.card-body{padding:12px 8px 12px 14px;display:flex;align-items:center;gap:8px}
+.card-name{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-sub{font-size:12px;color:var(--muted)}
+.card .tbtn{margin-left:auto}
+.card-new{border-style:dashed;align-items:center;justify-content:center;min-height:160px;color:var(--muted);gap:8px;background:transparent;font-weight:600}
+.card-new:hover{color:var(--accent);border-color:var(--accent)}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}}
+
+/* ============================================================ PROYECTO */
+#proj{grid-template-rows:var(--top-h) auto minmax(0,1fr) var(--status-h)}
+#proj>.topbar{grid-row:1}#proj>.mtabs{grid-row:2}#proj>.ws{grid-row:3}#proj>.statusbar{grid-row:4}
+.proj-name{min-width:60px;max-width:280px;width:100%;background:transparent;border:1px solid transparent;border-radius:var(--radius-sm);padding:5px 8px;font-weight:600;font-size:14px;text-overflow:ellipsis;transition:border-color .15s,background .15s}
+.proj-name:hover{border-color:var(--border)}
+.proj-name:focus{outline:none;border-color:var(--accent);background:var(--panel)}
+.save-state{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--faint);flex:none}
+.save-state.dirty .dot{background:var(--warn);box-shadow:0 0 0 3px rgba(245,184,74,.15)}
+.save-state.saved .dot{background:var(--ok)}
+.save-state.saving .dot{background:var(--info);animation:pulse 1s infinite}
+.actions{display:flex;align-items:center;gap:6px}
+
+.mtabs{display:none;gap:4px;padding:6px 8px;background:var(--bg-2);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.mtabs::-webkit-scrollbar{display:none}
+.mtab{flex:1;min-width:64px;display:flex;align-items:center;justify-content:center;gap:6px;height:34px;border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);border:1px solid transparent;position:relative;white-space:nowrap}
+.mtab[aria-selected="true"]{background:var(--panel-2);color:var(--text);border-color:var(--border)}
+.mtab .badge{position:absolute;top:3px;right:6px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--err);color:#fff;font:700 10px/16px var(--sans);display:none}
+.mtab .badge.show{display:block}
+
+.ws{display:grid;grid-template-columns:var(--side) 5px minmax(0,1fr) 5px minmax(280px,var(--out));min-height:0;min-width:0;background:var(--border)}
+.ws.no-side{grid-template-columns:0 0 minmax(0,1fr) 5px minmax(280px,var(--out))}
+.ws.no-side .side,.ws.no-side #rzSide{visibility:hidden}
+.panel{display:flex;flex-direction:column;background:var(--panel);min-width:0;min-height:0;overflow:hidden}
+.panel-head{display:flex;align-items:center;gap:8px;height:38px;padding:0 6px 0 12px;border-bottom:1px solid var(--border);background:var(--bg-2);flex:none;min-width:0}
+.ph-title{display:inline-flex;align-items:center;gap:7px;font:600 11px var(--sans);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.head-actions{margin-left:auto;display:flex;gap:2px;align-items:center}
+.rz{background:var(--bg-2);position:relative;touch-action:none;z-index:2}
+.rz::after{content:"";position:absolute;left:50%;top:50%;border-radius:2px;background:var(--border-2);transition:background .15s}
+.rz.v{cursor:col-resize}.rz.v::after{width:2px;height:36px;margin:-18px 0 0 -1px}
+.rz.h{cursor:row-resize}.rz.h::after{width:36px;height:2px;margin:-1px 0 0 -18px}
+.rz:hover::after,.rz.drag::after{background:var(--accent)}
+.out{display:grid;grid-template-rows:minmax(0,1fr) 5px minmax(60px,var(--con));min-height:0;min-width:0;background:var(--border)}
+
+/* ---------- Árbol ---------- */
+.tree{flex:1;overflow:auto;padding:6px 0 40px;user-select:none;outline:none}
+.tr{display:flex;align-items:center;gap:6px;height:30px;padding-right:2px;margin:1px 6px;border-radius:6px;cursor:pointer;color:var(--text-2);font-size:13px;white-space:nowrap;position:relative}
+.tr:hover{background:var(--panel-2);color:var(--text)}
+.tr.sel{background:var(--panel-2)}
+.tr.on{background:var(--accent-soft);color:var(--text)}
+.tr.drop{outline:1px dashed var(--accent)}
+.tr .chev{width:14px;height:14px;transition:transform .15s;color:var(--faint)}
+.tr.open .chev{transform:rotate(90deg)}
+.tr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tr .more{opacity:0;width:26px;height:26px}
+.tr:hover .more,.tr.on .more{opacity:1}
+.tr.flash{animation:flash-row 1.4s ease}
+@keyframes flash-row{0%,40%{background:rgba(196,155,255,.28)}}
+.fic{width:16px;height:16px;flex:none;display:grid;place-items:center;border-radius:4px;font:700 7.5px var(--mono);color:#0b0d12;overflow:hidden;letter-spacing:-.02em}
+svg.fic.folder{color:#e6c26a;background:none}
+.fic.html{background:var(--c-html)}.fic.css{background:var(--c-css)}.fic.js{background:var(--c-js)}.fic.json{background:var(--c-json)}.fic.img{background:var(--c-img)}.fic.md,.fic.txt{background:var(--c-md)}.fic.other{background:#6b7486}
+.tree-empty{padding:20px;color:var(--faint);font-size:12px;text-align:center}
+
+/* ---------- Editor ---------- */
+.tabs{display:flex;min-height:36px;background:var(--bg-2);border-bottom:1px solid var(--border);overflow-x:auto;overflow-y:hidden;flex:none;scrollbar-width:none}
+.tabs:empty{display:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:7px;padding:0 4px 0 12px;border-right:1px solid var(--border);font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap;position:relative;flex:none}
+.tab:hover{color:var(--text-2);background:var(--panel)}
+.tab.on{color:var(--text);background:var(--panel)}
+.tab.on::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--accent)}
+.tab .dir{color:var(--faint);font-size:11px}
+.tab .x{width:24px;height:24px;border-radius:5px;display:grid;place-items:center;color:var(--faint)}
+.tab .x:hover{background:var(--panel-3);color:var(--text)}
+.tab .x svg{width:13px;height:13px}
+.ed-path{font:12px var(--mono);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.meta{font:11px var(--mono);color:var(--faint);white-space:nowrap}
+.editor-host{flex:1;min-height:0;position:relative;overflow:hidden}
+.imgview{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;background:repeating-conic-gradient(#1a1e28 0 25%,#141720 0 50%) 0 0/20px 20px;color:var(--muted);font-size:12px;text-align:center}
+.imgview.blank{background:var(--panel)}
+.imgview img{max-width:100%;max-height:80%;object-fit:contain;border-radius:6px;box-shadow:var(--shadow)}
+.lite{position:absolute;inset:0;display:flex;font:var(--code-size)/var(--code-lh) var(--mono);background:var(--panel)}
+.lite-gutter{flex:none;min-width:44px;padding:10px 10px 10px 8px;text-align:right;color:var(--faint);background:var(--panel);border-right:1px solid var(--border);overflow:hidden;user-select:none;white-space:pre}
+.lite-body{position:relative;flex:1;min-width:0}
+.lite-body pre,.lite-body textarea{position:absolute;inset:0;margin:0;padding:10px 14px 40px;border:0;font:inherit;line-height:inherit;letter-spacing:0;tab-size:2;white-space:pre;overflow:auto;word-wrap:normal}
+.lite-body pre{pointer-events:none;color:var(--text);overflow:hidden}
+.lite-body textarea{background:transparent;color:transparent;caret-color:var(--accent);resize:none;outline:none;-webkit-text-fill-color:transparent}
+.lite-body textarea::selection{background:rgba(62,230,168,.25);-webkit-text-fill-color:transparent}
+.t-tag{color:#ff8f70}.t-attr{color:#f5d04a}.t-str{color:#9be38a}.t-com{color:#5c6680;font-style:italic}.t-kw{color:#c792ea}.t-num{color:#f78c6c}.t-fn{color:#82aaff}.t-prop{color:#7fdbca}.t-at{color:#c792ea}.t-sel{color:#ffcb6b}.t-pun{color:#89ddff}.t-ent{color:#f78c6c}.t-lit{color:#ff9cac}
+.editor-host .cm-editor{height:100%;font-size:var(--code-size);background:var(--panel)}
+.editor-host .cm-scroller{font-family:var(--mono);line-height:var(--code-lh)}
+.editor-host .cm-editor.cm-focused{outline:none}
+.editor-host .cm-gutters{background:var(--panel)!important;border-right:1px solid var(--border)!important}
+
+/* ---------- Vista previa ---------- */
+.seg{display:inline-flex;padding:2px;border-radius:7px;background:var(--panel-2);border:1px solid var(--border)}
+.seg button{height:24px;padding:0 8px;border-radius:5px;display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel-3);color:var(--text)}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+.toggle input{appearance:none;width:28px;height:16px;border-radius:10px;background:var(--panel-3);border:1px solid var(--border-2);position:relative;margin:0;cursor:pointer;transition:background .15s}
+.toggle input::after{content:"";position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--muted);transition:transform .15s,background .15s}
+.toggle input:checked{background:var(--accent-soft);border-color:var(--accent-2)}
+.toggle input:checked::after{transform:translateX(12px);background:var(--accent)}
+.preview-stage{flex:1;min-height:0;position:relative;background:#fff;overflow:hidden;display:flex;justify-content:center}
+.preview-stage.mobile{background:repeating-linear-gradient(45deg,#0e1117,#0e1117 10px,#10141b 10px,#10141b 20px);align-items:flex-start;padding:16px;overflow:auto}
+.frame-wrap{width:100%;height:100%;position:relative}
+.preview-stage.mobile .frame-wrap{width:375px;max-width:100%;height:auto;aspect-ratio:375/740;max-height:calc(100% - 4px);flex:none;border-radius:22px;border:8px solid #1e2330;box-shadow:var(--shadow);overflow:hidden;background:#fff}
+#preview{width:100%;height:100%;border:0;display:block;background:#fff}
+.run-flash{position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);transform:translateX(-100%);opacity:0;pointer-events:none}
+.run-flash.go{animation:runflash .6s ease}
+@keyframes runflash{0%{opacity:1;transform:translateX(-100%)}100%{opacity:0;transform:translateX(100%)}}
+.panel.preview.is-fs,.panel.preview:fullscreen{position:fixed;inset:0;z-index:80;width:100vw;height:100vh;height:100dvh;background:#000;opacity:1;visibility:visible}
+.panel.preview.is-fs .panel-head,.panel.preview:fullscreen .panel-head{display:none}
+.panel.preview.is-fs .preview-stage,.panel.preview:fullscreen .preview-stage{padding:0;background:#000;overflow:hidden;align-items:stretch}
+.panel.preview.is-fs .frame-wrap,.panel.preview:fullscreen .frame-wrap{width:100%!important;height:100%!important;max-height:none!important;aspect-ratio:auto!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.fs-exit{display:none;position:absolute;z-index:5;top:max(10px,env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));width:40px;height:40px;border-radius:50%;place-items:center;background:rgba(0,0,0,.45);color:#fff;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);opacity:.75}
+.fs-exit:active{opacity:1;transform:scale(.94)}
+.fs-exit svg{width:18px;height:18px}
+.panel.preview.is-fs .fs-exit,.panel.preview:fullscreen .fs-exit{display:grid}
+
+/* ---------- Consola ---------- */
+.con-filters{display:flex;gap:3px;margin-left:4px;overflow-x:auto;scrollbar-width:none}
+.chip{height:22px;padding:0 7px;border-radius:5px;font-size:11px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--panel-3);color:var(--text)}
+.chip .n{font:500 10px var(--mono);opacity:.8}
+.console-list{flex:1;min-height:0;overflow:auto;font:12px/1.5 var(--mono);padding:4px 0}
+.cl{display:grid;grid-template-columns:18px 1fr auto;gap:8px;padding:5px 10px;border-bottom:1px solid rgba(35,41,56,.6);align-items:start}
+.cl .ic{margin-top:2px;width:14px;height:14px}
+.cl .msg{white-space:pre-wrap;word-break:break-word;color:var(--text-2);min-width:0}
+.cl .loc{color:var(--info);cursor:pointer;margin-right:6px;text-decoration:underline dotted}
+.cl .tm{font-size:10px;color:var(--faint);white-space:nowrap;margin-top:2px}
+.cl .rep{display:inline-block;min-width:18px;padding:0 5px;margin-right:6px;border-radius:9px;background:var(--panel-3);color:var(--text-2);font-size:10px;text-align:center}
+.cl.warn{background:rgba(245,184,74,.06);color:var(--warn)} .cl.warn .msg{color:#f3d49a}
+.cl.error{background:rgba(255,93,108,.07);color:var(--err)} .cl.error .msg{color:#ffb3ba}
+.cl.info .ic{color:var(--info)} .cl.log .ic{color:var(--faint)}
+.cl.system{color:var(--accent)} .cl.system .msg{color:var(--muted);font-style:italic}
+.cl.mcp{color:#c49bff} .cl.mcp .msg{color:#d9c3ff}
+
+.statusbar{display:flex;align-items:center;gap:14px;padding:0 12px;background:var(--bg-2);border-top:1px solid var(--border);font:11px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden}
+.statusbar button{display:inline-flex;align-items:center;gap:6px;color:var(--muted);height:100%}
+.statusbar button:hover{color:var(--text)}
+
+/* ============================================================ MODALES */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(5,7,10,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .16s}
+.overlay.open{opacity:1;pointer-events:auto}
+.modal{width:100%;max-width:560px;max-height:min(86dvh,760px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--border-2);border-radius:14px;box-shadow:var(--shadow);transform:translateY(8px) scale(.985);transition:transform .18s ease;overflow:hidden}
+.overlay.open .modal{transform:none}
+.modal.wide{max-width:760px}.modal.sm{max-width:420px}
+.m-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--border)}
+.m-head h2{margin:0;font-size:16px;font-weight:650}
+.m-head .tbtn{margin-left:auto}
+.m-body{padding:16px 18px;overflow:auto}
+.m-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border);background:var(--bg-2)}
+.m-body p{color:var(--text-2);margin:0 0 10px}
+.m-body code{font:12px var(--mono);background:var(--panel-3);padding:1px 5px;border-radius:4px;color:var(--text)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.mcp-status{display:flex;align-items:center;gap:14px;padding:14px;border-radius:12px;border:1px solid var(--border);background:var(--bg-2);margin-bottom:16px}
+.mcp-orb{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:var(--panel-3);flex:none}
+.mcp-orb .state-dot{width:12px;height:12px}
+.mcp-status .t1{font-weight:650}.mcp-status .t2{font-size:12px;color:var(--muted)}.mcp-status .val{font-weight:600}
+[data-mcp="disconnected"] .val{color:var(--muted)}[data-mcp="connecting"] .val{color:var(--warn)}[data-mcp="connected"] .val{color:var(--ok)}[data-mcp="error"] .val{color:var(--err)}
+.mcp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.callout{padding:10px 12px;border-radius:var(--radius-sm);background:rgba(122,167,255,.08);border:1px solid rgba(122,167,255,.25);color:#c6d6ff;font-size:13px;margin-bottom:14px}
+.callout b{color:#e1e9ff}
+.h3{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+.fn-list{display:grid;gap:4px}
+.fn{display:grid;grid-template-columns:minmax(0,auto) 1fr;gap:12px;padding:7px 10px;border-radius:6px;background:var(--bg-2);border:1px solid var(--border);font-size:12px;align-items:baseline}
+.fn code{font:500 12px var(--mono);color:var(--accent);white-space:nowrap;background:none;padding:0}
+.fn span{color:var(--text-2)}
+ol.steps{margin:0;padding-left:20px;color:var(--text-2);font-size:13px}
+ol.steps li{margin-bottom:6px}
+.mcp-log{max-height:150px;overflow:auto;font:11px/1.6 var(--mono);background:var(--bg-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;color:var(--text-2)}
+.mcp-log .ok{color:var(--ok)}.mcp-log .bad{color:var(--err)}
+.hist{display:flex;flex-direction:column;gap:6px}
+.hrow{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-2)}
+.hrow .t{flex:1;min-width:0}.hrow .t b{display:block;font-size:13px;font-weight:600}.hrow .t span{font-size:12px;color:var(--muted)}
+.kgrid{display:grid;grid-template-columns:1fr auto;gap:8px 18px;font-size:13px;color:var(--text-2)}
+.kgrid div:nth-child(even){text-align:right}
+
+/* ============================================================ TOASTS */
+.toasts{position:fixed;z-index:200;right:16px;bottom:calc(var(--status-h) + 14px);display:flex;flex-direction:column;gap:8px;align-items:flex-end;pointer-events:none}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:220px;max-width:min(380px,calc(100vw - 32px));padding:10px 12px;border-radius:10px;background:var(--panel-2);border:1px solid var(--border-2);box-shadow:var(--shadow);font-size:13px;animation:tin .22s cubic-bezier(.2,.9,.3,1.2)}
+.toast.out{animation:tout .18s ease forwards}
+@keyframes tin{from{opacity:0;transform:translateY(8px) scale(.97)}}
+@keyframes tout{to{opacity:0;transform:translateY(6px)}}
+.toast .ic{width:18px;height:18px;flex:none}
+.toast.ok .ic{color:var(--ok)}.toast.err .ic{color:var(--err)}.toast.warn .ic{color:var(--warn)}.toast.info .ic{color:var(--info)}
+.toast .tx{flex:1}
+.toast .ta{font-weight:600;color:var(--accent);font-size:12px;padding:4px 6px;border-radius:5px}
+.toast .ta:hover{background:var(--accent-soft)}
+
+/* ============================================================ RESPONSIVE */
+@media (max-width:1100px){ .btn .lbl{display:none} .btn:not(.icon){padding:0 10px} }
+@media (max-width:900px){
+  :root{--top-h:50px;--code-size:13.5px;--code-lh:21px}
+  .mtabs{display:flex}
+  .brand-name,.hide-m,.mcp-pill .lbl,#saveText{display:none}
+  .topbar{gap:6px;padding:0 8px}
+  .ws,.ws.no-side{display:block;position:relative}
+  .out{display:contents}
+  .rz{display:none}
+  .ws .pane{position:absolute;inset:0;visibility:hidden;opacity:0;transition:opacity .15s}
+  .ws .pane.active,.ws.no-side .side.active{visibility:visible;opacity:1}
+  .tr{height:40px;font-size:14px}
+  .tr .more{opacity:1;width:34px;height:34px}
+  .tbtn{width:34px;height:34px}
+  .statusbar .hide-s{display:none}
+  .toasts{left:12px;right:12px;align-items:stretch}
+  .toast{max-width:none}
+  .mcp-grid{grid-template-columns:1fr}
+  .fn{grid-template-columns:1fr;gap:2px}
+  .overlay{align-items:flex-end;padding:0}
+  .modal{max-width:none!important;border-radius:16px 16px 0 0;max-height:90dvh}
+  .mcp-status{flex-wrap:wrap}
+  #mcpCopy{width:100%;justify-content:center}
+  .home-main{padding:18px 14px 60px}
+  .home-tools{width:100%;margin-left:0}
+  .home-tools .input{flex:1;width:auto}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .card-thumb{height:72px}
+  .card-new{min-height:130px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-play" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></symbol>
+  <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-folder-plus" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M12 11v5M9.5 13.5h5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></symbol>
+  <symbol id="i-file-plus" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 12v6M9 15h6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+  <symbol id="i-eraser" viewBox="0 0 24 24"><path d="M7 21h10"/><path d="M5.5 13.5 13 6a2.1 2.1 0 0 1 3 0l3 3a2.1 2.1 0 0 1 0 3l-7.5 7.5H9z"/><path d="m9 10 5 5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><polyline points="21 3 21 9 15 9"/></symbol>
+  <symbol id="i-max" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 2v6M15 2v6"/><path d="M6 8h12v4a6 6 0 0 1-12 0z"/><path d="M12 18v4"/></symbol>
+  <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M18 13h.01M8 16h8"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/></symbol>
+  <symbol id="i-err" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-bot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4v4M9 14h.01M15 14h.01"/></symbol>
+  <symbol id="i-code" viewBox="0 0 24 24"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+  <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></symbol>
+  <symbol id="i-package" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-dup" viewBox="0 0 24 24"><rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a1 1 0 0 1 1-1h11"/></symbol>
+</defs></svg>
+
+<!-- ======================================================== INICIO -->
+<section class="view" id="home">
+  <header class="topbar">
+    <div class="brand"><div class="logo">&lt;/&gt;</div><span class="brand-name">Mi Playground</span></div>
+    <span class="grow"></span>
+    <button class="mcp-pill" data-mcp-ui data-mcp="disconnected" title="Claude MCP (Alt+M)"><span class="state-dot"></span><span class="lbl">Claude MCP</span></button>
+    <button class="btn icon" data-open-keys title="Atajos de teclado"><svg class="i"><use href="#i-keyboard"/></svg></button>
+  </header>
+  <div class="home-main">
+    <div class="home-head">
+      <div><h1>Mis proyectos</h1><p id="homeCount"></p></div>
+      <div class="home-tools">
+        <input class="input" id="hSearch" placeholder="Buscar…" aria-label="Buscar proyecto">
+        <button class="btn" id="hImport" title="Crear un proyecto a partir de archivos"><svg class="i"><use href="#i-upload"/></svg><span class="lbl">Importar</span></button>
+        <button class="btn primary" id="hNew"><svg class="i"><use href="#i-plus"/></svg><span>Nuevo</span></button>
+      </div>
+    </div>
+    <div class="cards" id="cards"></div>
+  </div>
+</section>
+
+<!-- ======================================================== PROYECTO -->
+<section class="view" id="proj">
+  <header class="topbar">
+    <button class="btn icon" id="btnBack" title="Volver a proyectos (Alt+Q)"><svg class="i"><use href="#i-back"/></svg></button>
+    <div class="grow" style="display:flex;align-items:center;gap:8px">
+      <input class="proj-name" id="projName" aria-label="Nombre del proyecto" spellcheck="false" maxlength="80">
+      <div class="save-state saved" id="saveState"><span class="dot"></span><span id="saveText">Guardado</span></div>
+    </div>
+    <div class="actions">
+      <button class="mcp-pill" data-mcp-ui data-mcp="disconnected" title="Claude MCP (Alt+M)"><span class="state-dot"></span><span class="lbl">Claude MCP</span></button>
+      <button class="btn hide-m" id="btnSave" title="Guardar (Ctrl+S)"><svg class="i"><use href="#i-save"/></svg><span class="lbl">Guardar</span></button>
+      <button class="btn primary" id="btnRun" title="Ejecutar (Ctrl+Enter)"><svg class="i"><use href="#i-play"/></svg><span class="lbl">Ejecutar</span></button>
+      <div class="menu-wrap">
+        <button class="btn icon" id="btnMenu" aria-haspopup="true" title="Más opciones"><svg class="i"><use href="#i-more"/></svg></button>
+        <div class="menu" id="menu" role="menu">
+          <button data-act="newfile"><svg class="i"><use href="#i-file-plus"/></svg>Nuevo archivo<kbd>Alt N</kbd></button>
+          <button data-act="newfolder"><svg class="i"><use href="#i-folder-plus"/></svg>Nueva carpeta</button>
+          <button data-act="upload"><svg class="i"><use href="#i-upload"/></svg>Subir archivos</button>
+          <hr>
+          <button data-act="rename"><svg class="i"><use href="#i-edit"/></svg>Renombrar proyecto</button>
+          <button data-act="dup"><svg class="i"><use href="#i-dup"/></svg>Duplicar proyecto</button>
+          <button data-act="history"><svg class="i"><use href="#i-refresh"/></svg>Historial de versiones</button>
+          <button data-act="zip"><svg class="i"><use href="#i-package"/></svg>Descargar ZIP</button>
+          <button data-act="html"><svg class="i"><use href="#i-download"/></svg>Exportar HTML único<kbd>Alt E</kbd></button>
+          <hr>
+          <button data-act="sidebar"><svg class="i"><use href="#i-sidebar"/></svg>Mostrar/ocultar archivos<kbd>Alt B</kbd></button>
+          <button data-act="mcp"><svg class="i"><use href="#i-bot"/></svg>Claude MCP<kbd>Alt M</kbd></button>
+          <button data-act="keys"><svg class="i"><use href="#i-keyboard"/></svg>Atajos de teclado<kbd>Alt H</kbd></button>
+          <hr>
+          <button data-act="delete" class="danger"><svg class="i"><use href="#i-trash"/></svg>Eliminar proyecto</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="mtabs" role="tablist" aria-label="Paneles">
+    <button class="mtab" data-view="files"><svg class="i"><use href="#i-folder"/></svg>Archivos</button>
+    <button class="mtab" data-view="code"><svg class="i"><use href="#i-code"/></svg>Código</button>
+    <button class="mtab" data-view="preview"><svg class="i"><use href="#i-play"/></svg>Vista</button>
+    <button class="mtab" data-view="console"><svg class="i"><use href="#i-terminal"/></svg>Consola<span class="badge" id="mBadge">0</span></button>
+  </nav>
+
+  <main class="ws" id="ws">
+    <aside class="panel pane side" data-pane="files">
+      <div class="panel-head">
+        <span class="ph-title">Archivos</span>
+        <div class="head-actions">
+          <button class="tbtn" id="tNewFile" title="Nuevo archivo"><svg class="i"><use href="#i-file-plus"/></svg></button>
+          <button class="tbtn" id="tNewFolder" title="Nueva carpeta"><svg class="i"><use href="#i-folder-plus"/></svg></button>
+          <button class="tbtn" id="tUpload" title="Subir archivos"><svg class="i"><use href="#i-upload"/></svg></button>
+        </div>
+      </div>
+      <div class="tree" id="tree" role="tree" tabindex="-1"></div>
+    </aside>
+    <div class="rz v" id="rzSide" title="Arrastra para cambiar el ancho"></div>
+
+    <section class="panel pane code" data-pane="code">
+      <div class="tabs" id="tabs"></div>
+      <div class="panel-head">
+        <span class="fic other" id="edIcon"></span>
+        <span class="ed-path" id="edPath">Sin archivo</span>
+        <span class="meta hide-m" id="edMeta"></span>
+        <div class="head-actions">
+          <button class="tbtn" id="edCopy" title="Copiar archivo"><svg class="i"><use href="#i-copy"/></svg></button>
+          <button class="tbtn" id="edClear" title="Vaciar archivo"><svg class="i"><use href="#i-eraser"/></svg></button>
+        </div>
+      </div>
+      <div class="editor-host" id="edHost"></div>
+    </section>
+    <div class="rz v" id="rzOut" title="Arrastra para cambiar el ancho"></div>
+
+    <div class="out">
+      <section class="panel pane preview" data-pane="preview" id="previewPanel">
+        <div class="panel-head">
+          <span class="ph-title"><svg class="i"><use href="#i-play"/></svg>Vista</span>
+          <div class="head-actions" style="gap:6px">
+            <label class="toggle hide-m" title="Actualizar al escribir"><input type="checkbox" id="autoRun" checked>Auto</label>
+            <div class="seg" role="group" aria-label="Tamaño de vista">
+              <button id="vDesk" aria-pressed="true" title="Vista escritorio"><svg class="i"><use href="#i-monitor"/></svg></button>
+              <button id="vMob" aria-pressed="false" title="Vista móvil"><svg class="i"><use href="#i-phone"/></svg></button>
+            </div>
+            <button class="tbtn" id="btnRefresh" title="Actualizar vista"><svg class="i"><use href="#i-refresh"/></svg></button>
+            <button class="tbtn" id="btnFs" title="Pantalla completa"><svg class="i"><use href="#i-max"/></svg></button>
+          </div>
+        </div>
+        <div class="preview-stage" id="stage">
+          <div class="frame-wrap"><iframe id="preview" title="Vista previa" sandbox="allow-scripts allow-modals allow-forms allow-popups allow-pointer-lock" allow="fullscreen; gamepad; autoplay"></iframe></div>
+          <div class="run-flash" id="runFlash"></div>
+          <button class="fs-exit" id="btnFsExit" aria-label="Salir de pantalla completa"><svg class="i"><use href="#i-x"/></svg></button>
+        </div>
+      </section>
+      <div class="rz h" id="rzCon" title="Arrastra para cambiar la altura"></div>
+      <section class="panel pane console" data-pane="console">
+        <div class="panel-head">
+          <span class="ph-title"><svg class="i"><use href="#i-terminal"/></svg>Consola</span>
+          <div class="con-filters" role="group">
+            <button class="chip" data-filter="all" aria-pressed="true">Todo <span class="n" id="nAll">0</span></button>
+            <button class="chip" data-filter="log" aria-pressed="false">Log <span class="n" id="nLog">0</span></button>
+            <button class="chip" data-filter="warn" aria-pressed="false" style="color:var(--warn)">Avisos <span class="n" id="nWarn">0</span></button>
+            <button class="chip" data-filter="error" aria-pressed="false" style="color:var(--err)">Errores <span class="n" id="nErr">0</span></button>
+          </div>
+          <div class="head-actions">
+            <button class="tbtn" id="btnKeep" title="Conservar mensajes entre ejecuciones"><svg class="i"><use href="#i-dot"/></svg></button>
+            <button class="tbtn" id="btnConClear" title="Limpiar consola (Alt+L)"><svg class="i"><use href="#i-trash"/></svg></button>
+          </div>
+        </div>
+        <div class="console-list" id="conList" role="log"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="statusbar">
+    <button id="engineBtn" title="Cambiar motor del editor"><svg class="i" style="width:12px;height:12px"><use href="#i-code"/></svg><span id="engineTxt">Editor…</span></button>
+    <span class="hide-s" id="runInfo">Sin ejecutar</span>
+    <span class="grow"></span>
+    <button id="autosaveBtn"><span id="autosaveTxt">Autoguardado: sí</span></button>
+    <span class="hide-s" id="filesTxt"></span>
+    <button data-mcp-ui data-mcp="disconnected"><span class="state-dot"></span><span class="mcp-txt">MCP: No conectado</span></button>
+  </footer>
+</section>
+
+<input type="file" id="fileInput" multiple hidden>
+<div class="menu ctx" id="ctx" role="menu"></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<!-- ======================================================== MCP -->
+<div class="overlay" id="mMcp" role="dialog" aria-modal="true" aria-labelledby="mmT">
+  <div class="modal wide">
+    <div class="m-head"><svg class="i"><use href="#i-bot"/></svg><h2 id="mmT">Claude MCP</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body">
+      <div class="mcp-status" id="mcpBox" data-mcp="disconnected">
+        <div class="mcp-orb"><span class="state-dot"></span></div>
+        <div style="flex:1;min-width:0"><div class="t1">Playground MCP</div><div class="t2">Estado: <span class="val" id="mcpStateTxt">No conectado</span> <span id="mcpDetail"></span></div></div>
+        <button class="btn" id="mcpCopy"><svg class="i"><use href="#i-copy"/></svg><span>Copiar info técnica</span></button>
+      </div>
+      <div class="callout">Esta página <b>no</b> habla directamente con Claude. Claude usa un <b>servidor MCP</b> (en Render o en tu computadora) y esta pestaña se conecta a él por un puente WebSocket. Solo se ejecutan las funciones listadas abajo. El código de emparejamiento vive solo en memoria mientras la pestaña está abierta.</div>
+      <div class="mcp-grid">
+        <div class="field"><label for="mcpUrl">Dirección del puente</label><input class="input" id="mcpUrl" value="ws://127.0.0.1:8787" spellcheck="false" autocapitalize="off"></div>
+        <div class="field"><label for="mcpToken">Código de emparejamiento</label><input class="input" id="mcpToken" type="password" placeholder="Tu código secreto (PLAYGROUND_TOKEN)" autocomplete="off" spellcheck="false"></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn primary" id="mcpConnect"><svg class="i"><use href="#i-plug"/></svg><span>Conectar</span></button>
+        <button class="btn" id="mcpDisconnect" disabled><svg class="i"><use href="#i-x"/></svg><span>Desconectar</span></button>
+      </div>
+      <div class="h3">Herramientas para Claude</div>
+      <div class="fn-list" id="fnList"></div>
+      <div class="h3">Cómo conectar</div>
+      <p style="font-size:13px"><b>Desde el celular (servidor remoto):</b></p>
+      <ol class="steps">
+        <li>Sube <code>server.mjs</code> y <code>package.json</code> a Render. Variable <code>PLAYGROUND_USERS</code> = <code>nombre=código,otro=código2</code> (un código distinto por persona).</li>
+        <li>En Claude: Conectores → Agregar conector personalizado → <code>https://TU-SERVIDOR.onrender.com/mcp/TU-CODIGO</code>.</li>
+        <li>Aquí arriba: <code>wss://TU-SERVIDOR.onrender.com/bridge</code> + tu código → <b>Conectar</b>.</li>
+        <li>Usa pantalla dividida (Chrome + Claude). Si se corta, se reconecta sola.</li>
+      </ol>
+      <div class="h3">Actividad del puente</div>
+      <div class="mcp-log" id="mcpLog"><span style="color:var(--faint)">Sin actividad.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== HISTORIAL -->
+<div class="overlay" id="mHist" role="dialog" aria-modal="true" aria-labelledby="mhT">
+  <div class="modal">
+    <div class="m-head"><svg class="i"><use href="#i-refresh"/></svg><h2 id="mhT">Historial de versiones</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body">
+      <p style="font-size:13px">Se guarda una copia automática al abrir el proyecto, antes de que Claude haga cambios y antes de borrar algo. Se conservan las últimas 30.</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" id="hSnapNow"><svg class="i"><use href="#i-save"/></svg><span>Guardar versión ahora</span></button></div>
+      <div class="hist" id="histList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================== ATAJOS -->
+<div class="overlay" id="mKeys" role="dialog" aria-modal="true" aria-labelledby="mkT">
+  <div class="modal sm">
+    <div class="m-head"><svg class="i"><use href="#i-keyboard"/></svg><h2 id="mkT">Atajos de teclado</h2><button class="tbtn" data-close title="Cerrar"><svg class="i"><use href="#i-x"/></svg></button></div>
+    <div class="m-body"><div class="kgrid">
+      <div>Ejecutar</div><div><kbd>Ctrl</kbd> <kbd>Enter</kbd></div>
+      <div>Guardar</div><div><kbd>Ctrl</kbd> <kbd>S</kbd></div>
+      <div>Nuevo archivo</div><div><kbd>Alt</kbd> <kbd>N</kbd></div>
+      <div>Cerrar pestaña</div><div><kbd>Alt</kbd> <kbd>W</kbd></div>
+      <div>Volver a proyectos</div><div><kbd>Alt</kbd> <kbd>Q</kbd></div>
+      <div>Mostrar/ocultar archivos</div><div><kbd>Alt</kbd> <kbd>B</kbd></div>
+      <div>Archivos / Código / Vista / Consola</div><div><kbd>Alt</kbd> <kbd>1</kbd>–<kbd>4</kbd></div>
+      <div>Exportar HTML</div><div><kbd>Alt</kbd> <kbd>E</kbd></div>
+      <div>Limpiar consola</div><div><kbd>Alt</kbd> <kbd>L</kbd></div>
+      <div>Claude MCP</div><div><kbd>Alt</kbd> <kbd>M</kbd></div>
+      <div>Esta ayuda</div><div><kbd>Alt</kbd> <kbd>H</kbd></div>
+      <div>Indentar / desindentar</div><div><kbd>Tab</kbd> / <kbd>Shift</kbd> <kbd>Tab</kbd></div>
+    </div><p style="margin-top:14px;font-size:12px;color:var(--muted)">En Mac usa <kbd>⌘</kbd> en lugar de <kbd>Ctrl</kbd>.</p></div>
+  </div>
+</div>
+
+<!-- ======================================================== DIÁLOGO -->
+<div class="overlay" id="mDialog" role="alertdialog" aria-modal="true" aria-labelledby="mdT">
+  <div class="modal sm">
+    <div class="m-head"><h2 id="mdT"></h2></div>
+    <div class="m-body"><p id="mdMsg"></p><input class="input" id="mdInput" style="width:100%;display:none" maxlength="200" spellcheck="false" autocapitalize="off"></div>
+    <div class="m-foot"><button class="btn" id="mdCancel">Cancelar</button><button class="btn primary" id="mdOk">Aceptar</button></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   MI PLAYGROUND v2
+   utilidades · rutas · almacenamiento · editores · vista previa ·
+   consola · proyecto · interfaz · edición parcial · PlaygroundAPI ·
+   puente MCP · acciones · eventos · arranque
+   ===================================================================== */
+
+/* ------------------------------------------------------------ utilidades */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const debounce = (fn, ms) => { let t; const d = (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; d.cancel = () => clearTimeout(t); return d; };
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const isNarrow = () => matchMedia('(max-width: 900px)').matches;
+const countNL = s => { let c = 0; for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 10) c++; return c; };
+const prefs = {
+  get(k, d) { try { const v = localStorage.getItem('pg:' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('pg:' + k, JSON.stringify(v)); } catch {} }
+};
+function timeAgo(ts) {
+  const s = Math.round((Date.now() - ts) / 1000);
+  if (s < 45) return 'hace un momento';
+  if (s < 3600) return `hace ${Math.round(s / 60)} min`;
+  if (s < 86400) return `hace ${Math.round(s / 3600)} h`;
+  return new Date(ts).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+const fmtBytes = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+function b64utf8(s) { const b = new TextEncoder().encode(s); let bin = ''; for (let i = 0; i < b.length; i += 0x8000) bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000)); return btoa(bin); }
+function dataUrlBytes(u) {
+  const i = u.indexOf(','); const s = u.slice(i + 1);
+  if (/;base64$/.test(u.slice(0, i))) { const bin = atob(s); const a = new Uint8Array(bin.length); for (let j = 0; j < bin.length; j++) a[j] = bin.charCodeAt(j); return a; }
+  return new TextEncoder().encode(decodeURIComponent(s));
+}
+const dataUrlSize = u => { const i = u.indexOf(','); return /;base64$/.test(u.slice(0, i)) ? Math.floor((u.length - i - 1) * 3 / 4) : u.length - i - 1; };
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch {} ta.remove(); return ok; }
+}
+function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
+const slug = s => (s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w-]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'proyecto');
+
+/* ------------------------------------------------------------ rutas de archivos */
+const P = {
+  norm(p) {
+    p = String(p ?? '').replace(/\\/g, '/').trim();
+    const out = [];
+    for (let s of p.split('/')) {
+      s = s.trim();
+      if (!s || s === '.') continue;
+      if (s === '..') { if (!out.length) throw new Error('La ruta sale del proyecto'); out.pop(); continue; }
+      out.push(s);
+    }
+    const r = out.join('/');
+    if (!r) throw new Error('Ruta vacía');
+    if (r.length > 200) throw new Error('Ruta demasiado larga');
+    if (/[<>:"|?*\x00-\x1f]/.test(r)) throw new Error(`Caracteres no válidos en "${r}"`);
+    return r;
+  },
+  dir(p) { const i = p.lastIndexOf('/'); return i < 0 ? '' : p.slice(0, i); },
+  base(p) { return p.slice(p.lastIndexOf('/') + 1); },
+  ext(p) { const b = P.base(p); const i = b.lastIndexOf('.'); return i > 0 ? b.slice(i + 1).toLowerCase() : ''; },
+  join(a, b) { return a ? a + '/' + b : b; },
+  resolve(fromDir, ref) {
+    if (!ref || /^(?:[a-z][\w+.-]*:|\/\/|#)/i.test(ref)) return null;
+    ref = ref.split(/[?#]/)[0]; if (!ref) return null;
+    try { ref = decodeURIComponent(ref); } catch {}
+    try { return P.norm(ref.startsWith('/') ? ref : P.join(fromDir, ref)); } catch { return null; }
+  },
+  within(p, folder) { return p === folder || p.startsWith(folder + '/'); },
+  cmp(a, b) { return a.localeCompare(b, 'es', { numeric: true, sensitivity: 'base' }); }
+};
+const TEXT_EXT = new Set('html htm css js mjs cjs json md txt svg xml csv tsv glsl vert frag wgsl ts jsx tsx yml yaml ini toml gitignore env sh py'.split(' '));
+const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml', ico: 'image/x-icon', bmp: 'image/bmp', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg', m4a: 'audio/mp4', mp4: 'video/mp4', webm: 'video/webm', json: 'application/json', css: 'text/css', js: 'text/javascript', mjs: 'text/javascript', html: 'text/html', txt: 'text/plain', md: 'text/markdown', csv: 'text/csv', glb: 'model/gltf-binary', gltf: 'model/gltf+json', obj: 'text/plain', woff: 'font/woff', woff2: 'font/woff2', ttf: 'font/ttf', otf: 'font/otf', xml: 'application/xml', glsl: 'text/plain' };
+function langOf(path) { const e = P.ext(path); if (['html', 'htm', 'svg', 'xml'].includes(e)) return 'html'; if (e === 'css') return 'css'; if (['js', 'mjs', 'cjs', 'json', 'ts', 'jsx', 'tsx'].includes(e)) return 'js'; return 'plain'; }
+function iconOf(path, file) {
+  const e = P.ext(path);
+  if (file?.binary) return /^(png|jpe?g|gif|webp|ico|bmp)$/.test(e) ? ['img', 'IMG'] : ['other', (e || 'BIN').slice(0, 3).toUpperCase()];
+  if (['html', 'htm'].includes(e)) return ['html', '<>'];
+  if (e === 'css') return ['css', '#'];
+  if (['js', 'mjs', 'cjs', 'ts', 'jsx', 'tsx'].includes(e)) return ['js', 'JS'];
+  if (e === 'json') return ['json', '{}'];
+  if (e === 'svg') return ['img', 'SVG'];
+  if (e === 'md') return ['md', 'MD'];
+  return ['txt', (e || 'TXT').slice(0, 3).toUpperCase()];
+}
+
+/* ------------------------------------------------------------ notificaciones */
+const ICON = { ok: 'i-check', err: 'i-err', warn: 'i-alert', info: 'i-info' };
+function toast(msg, type = 'info', opts = {}) {
+  const el = document.createElement('div'); el.className = 'toast ' + type;
+  el.innerHTML = `<svg class="i ic"><use href="#${ICON[type]}"/></svg><div class="tx"></div>`;
+  el.querySelector('.tx').textContent = msg;
+  const close = () => { el.classList.add('out'); setTimeout(() => el.remove(), 180); };
+  if (opts.action) { const b = document.createElement('button'); b.className = 'ta'; b.textContent = opts.action.label; b.onclick = () => { opts.action.run(); close(); }; el.appendChild(b); }
+  $('#toasts').appendChild(el);
+  setTimeout(close, opts.duration || (opts.action ? 7000 : 2800));
+  while ($('#toasts').children.length > 4) $('#toasts').firstChild.remove();
+}
+
+/* ------------------------------------------------------------ modales y diálogos */
+const Modal = {
+  stack: [],
+  open(id) { const m = $('#' + id); m.classList.add('open'); this.stack.push(m); },
+  close(m) { m = m || this.stack[this.stack.length - 1]; if (!m) return; m.classList.remove('open'); this.stack = this.stack.filter(x => x !== m); if (m.id === 'mDialog' && Dialog.resolve) Dialog.finish(null); },
+  top() { return this.stack[this.stack.length - 1]; }
+};
+const Dialog = {
+  resolve: null,
+  ask({ title, message, okText = 'Aceptar', danger = false, input = null, select = null }) {
+    return new Promise(res => {
+      this.resolve = res;
+      $('#mdT').textContent = title; $('#mdMsg').textContent = message || '';
+      const inp = $('#mdInput'); inp.style.display = input !== null ? 'block' : 'none'; inp.value = input ?? '';
+      const ok = $('#mdOk'); ok.textContent = okText; ok.className = 'btn ' + (danger ? 'danger' : 'primary');
+      Modal.open('mDialog');
+      setTimeout(() => {
+        if (input === null) return ok.focus();
+        inp.focus(); const [a, b] = select || [0, inp.value.length]; try { inp.setSelectionRange(a, b); } catch {}
+      }, 60);
+    });
+  },
+  finish(v) { const r = this.resolve; this.resolve = null; $('#mDialog').classList.remove('open'); Modal.stack = Modal.stack.filter(x => x.id !== 'mDialog'); r && r(v); },
+  confirm(o) { return this.ask(o).then(v => v !== null); },
+  prompt(o) { return this.ask({ ...o, input: o.value ?? '' }); }
+};
+$('#mdOk').onclick = () => Dialog.finish($('#mdInput').style.display === 'block' ? $('#mdInput').value : true);
+$('#mdCancel').onclick = () => Dialog.finish(null);
+$('#mdInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('#mdOk').click(); } });
+$$('.overlay').forEach(o => {
+  o.addEventListener('mousedown', e => { if (e.target === o) Modal.close(o); });
+  $$('[data-close]', o).forEach(b => b.onclick = () => Modal.close(o));
+});
+
+/* ------------------------------------------------------------ almacenamiento */
+const Store = {
+  db: null, mode: 'indexeddb',
+  async init() {
+    try {
+      if (!('indexedDB' in window)) throw new Error('sin IndexedDB');
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('mi-playground', 2);
+        r.onupgradeneeded = () => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+          if (!db.objectStoreNames.contains('snaps')) db.createObjectStore('snaps', { keyPath: 'id' }).createIndex('pid', 'pid');
+        };
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); r.onblocked = () => rej(new Error('bloqueado'));
+        setTimeout(() => rej(new Error('timeout')), 4000);
+      });
+    } catch (e) { this.mode = 'localstorage'; console.warn('[Playground] usando localStorage:', e.message); }
+  },
+  tx(mode, fn, store = 'projects') {
+    return new Promise((res, rej) => {
+      const t = this.db.transaction(store, mode); const r = fn(t.objectStore(store));
+      t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('Transacción abortada'));
+    });
+  },
+  lsAll() { try { return JSON.parse(localStorage.getItem('pg:projects') || '{}'); } catch { return {}; } },
+  lsWrite(o) { try { localStorage.setItem('pg:projects', JSON.stringify(o)); } catch { throw new Error('Sin espacio en el almacenamiento local'); } },
+  async all() { const l = this.mode === 'indexeddb' ? await this.tx('readonly', s => s.getAll()) : Object.values(this.lsAll()); return (l || []).map(migrate).sort((a, b) => b.updatedAt - a.updatedAt); },
+  async get(id) { const p = this.mode === 'indexeddb' ? await this.tx('readonly', s => s.get(id)) : this.lsAll()[id]; return p ? migrate(p) : null; },
+  async put(p) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.put(p)); else { const o = this.lsAll(); o[p.id] = p; this.lsWrite(o); } return p; },
+  async del(id) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.delete(id)); else { const o = this.lsAll(); delete o[id]; this.lsWrite(o); } },
+  // versiones (historial)
+  lsSnaps() { try { return JSON.parse(localStorage.getItem('pg:snaps') || '{}'); } catch { return {}; } },
+  async snapList(pid) { const l = this.mode === 'indexeddb' ? await this.tx('readonly', s => s.index('pid').getAll(pid), 'snaps') : Object.values(this.lsSnaps()).filter(x => x.pid === pid); return (l || []).sort((a, b) => b.at - a.at); },
+  async snapPut(x) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.put(x), 'snaps'); else { const o = this.lsSnaps(); o[x.id] = x; try { localStorage.setItem('pg:snaps', JSON.stringify(o)); } catch {} } },
+  async snapDel(id) { if (this.mode === 'indexeddb') await this.tx('readwrite', s => s.delete(id), 'snaps'); else { const o = this.lsSnaps(); delete o[id]; try { localStorage.setItem('pg:snaps', JSON.stringify(o)); } catch {} } }
+};
+/* Historial de versiones: copias automáticas para poder recuperar cualquier cambio */
+const Snap = {
+  last: new Map(), MAX: 30,
+  async take(reason, project = App.project) {
+    if (!project) return null;
+    const x = { id: uid(), pid: project.id, at: Date.now(), reason, name: project.name, files: structuredClone(project.files), folders: [...(project.folders || [])] };
+    try {
+      await Store.snapPut(x); this.last.set(project.id, x.at);
+      const all = await Store.snapList(project.id);
+      for (const old of all.slice(this.MAX)) await Store.snapDel(old.id);
+    } catch (e) { console.warn('[Playground] no se pudo guardar la versión:', e.message); }
+    return x;
+  },
+  async auto(reason, gap = 180000) { // como máximo una copia automática cada `gap` ms
+    const p = App.project; if (!p) return;
+    if (!this.last.has(p.id)) { const l = await Store.snapList(p.id).catch(() => []); this.last.set(p.id, l[0]?.at || 0); }
+    if (Date.now() - this.last.get(p.id) < gap) return;
+    await this.take(reason);
+  }
+};
+/* Proyectos de la versión 1 (html/css/js) → archivos reales, sin perder nada */
+function migrate(p) {
+  if (p.files) { p.folders = p.folders || []; return p; }
+  const files = {
+    'index.html': { content: `<!DOCTYPE html>\n<html lang="es">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>${esc(p.name || 'Proyecto')}</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n${p.html || ''}\n  <script src="script.js"><\/script>\n</body>\n</html>\n` },
+    'style.css': { content: p.css || '' },
+    'script.js': { content: p.js || '' }
+  };
+  return { id: p.id, name: p.name || 'Proyecto', createdAt: p.createdAt || Date.now(), updatedAt: p.updatedAt || Date.now(), files, folders: [], migrated: true };
+}
+function templateFiles(blank) {
+  if (blank) return {
+    'index.html': { content: '<!DOCTYPE html>\n<html lang="es">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>Proyecto</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n\n  <script src="script.js"><\/script>\n</body>\n</html>\n' },
+    'style.css': { content: '' }, 'script.js': { content: '' }
+  };
+  return {
+    'index.html': { content: `<!DOCTYPE html>\n<html lang="es">\n<head>\n  <meta charset="UTF-8">\n  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <title>Mi proyecto</title>\n  <link rel="stylesheet" href="style.css">\n</head>\n<body>\n  <main class="card">\n    <h1>Hola, mundo 👋</h1>\n    <p>Crea archivos y carpetas, y mira el resultado al instante.</p>\n    <button id="btn">Contar clics: <span id="n">0</span></button>\n  </main>\n  <script src="script.js"><\/script>\n</body>\n</html>\n` },
+    'style.css': { content: `* { box-sizing: border-box; }\nbody {\n  margin: 0;\n  min-height: 100vh;\n  display: grid;\n  place-items: center;\n  font-family: system-ui, sans-serif;\n  background: linear-gradient(135deg, #0f172a, #1e293b);\n  color: #e2e8f0;\n}\n.card {\n  text-align: center;\n  padding: 32px;\n  border-radius: 16px;\n  background: rgba(255, 255, 255, 0.06);\n  border: 1px solid rgba(255, 255, 255, 0.1);\n  max-width: 90vw;\n}\nbutton {\n  font: inherit;\n  padding: 10px 18px;\n  border: 0;\n  border-radius: 10px;\n  background: #3ee6a8;\n  color: #04140d;\n  font-weight: 600;\n  cursor: pointer;\n}\n` },
+    'script.js': { content: `const btn = document.getElementById('btn');\nconst n = document.getElementById('n');\nlet clics = 0;\n\nbtn.addEventListener('click', () => {\n  clics++;\n  n.textContent = clics;\n  console.log('Clic número', clics);\n});\n\nconsole.log('¡Playground listo!');\n` }
+  };
+}
+
+/* ------------------------------------------------------------ resaltado (editor ligero) */
+const HL = {
+  wrap(cls, s) { return `<span class="${cls}">${esc(s)}</span>`; },
+  run(src, rules) {
+    let out = '', i = 0; const re = new RegExp(rules.map(r => `(${r[0].source})`).join('|'), 'gy');
+    while (i < src.length) {
+      re.lastIndex = i; const m = re.exec(src);
+      if (m && m[0].length) { const g = m.slice(1).findIndex(x => x !== undefined); const rule = rules[g]; out += rule[1] ? this.wrap(rule[1], m[0]) : esc(m[0]); i += m[0].length; }
+      else { const ws = /\s+/y; ws.lastIndex = i; const w = ws.exec(src); const j = w ? i + w[0].length : i + 1; out += esc(src.slice(i, j)); i = j; }
+    }
+    return out;
+  },
+  js(src) {
+    return this.run(src, [
+      [/\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$)/, 't-com'],
+      [/`(?:\\[\s\S]|[^`\\])*`?|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?/, 't-str'],
+      [/\b(?:const|let|var|function|return|if|else|for|while|do|switch|case|break|continue|new|class|extends|super|import|export|from|default|async|await|try|catch|finally|throw|typeof|instanceof|in|of|delete|void|yield|this|static|get|set)\b/, 't-kw'],
+      [/\b(?:true|false|null|undefined|NaN|Infinity)\b/, 't-lit'],
+      [/\b(?:0x[\da-f]+|\d+\.?\d*(?:e[+-]?\d+)?)\b/i, 't-num'],
+      [/[A-Za-z_$][\w$]*(?=\s*\()/, 't-fn'],
+      [/[A-Za-z_$][\w$]*/, null],
+      [/=>|[{}()[\];,.<>=!+\-*/%&|^~?:]/, 't-pun']
+    ]);
+  },
+  css(src) {
+    return this.run(src, [
+      [/\/\*[\s\S]*?(?:\*\/|$)/, 't-com'],
+      [/"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?/, 't-str'],
+      [/@[\w-]+/, 't-at'],
+      [/#[\da-fA-F]{3,8}\b/, 't-num'],
+      [/-?[\w-]+(?=\s*:[^{;]*[;}\n])/, 't-prop'],
+      [/-?\d*\.?\d+(?:%|[a-z]+)?/, 't-num'],
+      [/[\w-]+(?=\()/, 't-fn'],
+      [/[.#]?[\w-]+|::?[\w-]+/, 't-sel'],
+      [/[{}();:,>+~*]/, 't-pun']
+    ]);
+  },
+  html(src) {
+    const tag = t => {
+      if (t.startsWith('<!--')) return this.wrap('t-com', t);
+      if (/^<!/i.test(t)) return this.wrap('t-kw', t);
+      return t.replace(/^(<\/?)([\w-]*)|("[^"]*"?|'[^']*'?)|([^\s=<>"'/]+)(?=\s*=)|(\/?>)$|([\s\S])/g, (m, open, name, str, attr, close, other) => {
+        if (open !== undefined) return this.wrap('t-pun', open) + this.wrap('t-tag', name);
+        if (str) return this.wrap('t-str', str); if (attr) return this.wrap('t-attr', attr); if (close) return this.wrap('t-pun', close);
+        return esc(other);
+      });
+    };
+    let out = '', i = 0, m; const re = /<!--[\s\S]*?(?:-->|$)|<!DOCTYPE[^>]*>?|<\/?[A-Za-z][\w-]*(?:[^>"']|"[^"]*"|'[^']*')*>?|&[#\w]+;/gi;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(i, m.index));
+      out += m[0][0] === '&' ? this.wrap('t-ent', m[0]) : tag(m[0]);
+      i = re.lastIndex;
+      const open = /^<(script|style)\b[^>]*>$/i.exec(m[0]);
+      if (open) {
+        const endRe = new RegExp(`</${open[1]}\\s*>`, 'ig'); endRe.lastIndex = i; const e = endRe.exec(src);
+        const end = e ? e.index : src.length; const inner = src.slice(i, end);
+        out += open[1].toLowerCase() === 'script' ? this.js(inner) : this.css(inner);
+        i = end; re.lastIndex = end;
+      }
+    }
+    return out + esc(src.slice(i));
+  },
+  plain(src) { return esc(src); }
+};
+const BIG = 200000;
+
+class LiteEditor {
+  constructor(host, onChange) {
+    this.host = host; this.onChange = onChange; this.lang = 'plain';
+    host.innerHTML = `<div class="lite"><div class="lite-gutter" aria-hidden="true"></div><div class="lite-body"><pre aria-hidden="true"><code></code></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Editor de código"></textarea></div></div>`;
+    this.ta = $('textarea', host); this.pre = $('pre', host); this.code = $('code', host); this.gutter = $('.lite-gutter', host);
+    this.renderSoon = debounce(() => this.render(), 40);
+    this.ta.addEventListener('input', () => { this.ta.value.length > 20000 ? this.renderSoon() : this.render(); this.onChange(); });
+    this.ta.addEventListener('scroll', () => this.sync());
+    this.ta.addEventListener('keydown', e => this.keys(e));
+  }
+  load(text, lang, view) {
+    this.lang = lang; this.ta.value = text; this.lines = -1; this.render();
+    if (view) { this.ta.scrollTop = view.top; this.ta.scrollLeft = view.left; try { this.ta.setSelectionRange(view.a, view.b); } catch {} }
+    else { this.ta.scrollTop = 0; this.ta.scrollLeft = 0; try { this.ta.setSelectionRange(0, 0); } catch {} }
+    this.sync();
+  }
+  snapshot() { return { top: this.ta.scrollTop, left: this.ta.scrollLeft, a: this.ta.selectionStart, b: this.ta.selectionEnd }; }
+  render() {
+    const v = this.ta.value;
+    this.code.innerHTML = (v.length > BIG ? HL.plain(v) : HL[this.lang](v)) + '\n';
+    const n = countNL(v) + 1;
+    if (n !== this.lines) { this.lines = n; let g = ''; for (let i = 1; i <= n; i++) g += i + '\n'; this.gutter.textContent = g; }
+    this.sync();
+  }
+  sync() { this.pre.scrollTop = this.ta.scrollTop; this.pre.scrollLeft = this.ta.scrollLeft; this.gutter.scrollTop = this.ta.scrollTop; }
+  insert(text) { this.ta.focus(); if (!document.execCommand('insertText', false, text)) { this.ta.setRangeText(text, this.ta.selectionStart, this.ta.selectionEnd, 'end'); this.ta.dispatchEvent(new Event('input')); } }
+  keys(e) {
+    const ta = this.ta, v = ta.value, s = ta.selectionStart, en = ta.selectionEnd;
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const ls = v.lastIndexOf('\n', s - 1) + 1;
+      if (s === en && !e.shiftKey) return this.insert('  ');
+      const le = v.indexOf('\n', en - (en > s && v[en - 1] === '\n' ? 1 : 0)); const end = le === -1 ? v.length : le;
+      const block = v.slice(ls, end); const nb = e.shiftKey ? block.replace(/^ {1,2}/gm, '') : block.replace(/^/gm, '  ');
+      ta.setSelectionRange(ls, end); this.insert(nb); ta.setSelectionRange(ls, ls + nb.length);
+    } else if (e.key === 'Enter' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const ls = v.lastIndexOf('\n', s - 1) + 1; const ind = /^[ \t]*/.exec(v.slice(ls, s))[0];
+      const before = v.slice(ls, s).trimEnd(); const after = v.slice(en);
+      const opens = /[{[(]$/.test(before) || (this.lang === 'html' && /<([a-z][\w-]*)(?:[^>]*[^/])?>$/i.test(before) && !/^<(br|hr|img|input|meta|link|area|base|col|embed|source|track|wbr)\b/i.test(/<[^<]*$/.exec(before)?.[0] || ''));
+      const closes = /^\s*([}\])]|<\/)/.test(after);
+      if (opens && closes) { this.insert('\n' + ind + '  ' + '\n' + ind); const p = s + 1 + ind.length + 2; ta.setSelectionRange(p, p); }
+      else this.insert('\n' + ind + (opens ? '  ' : ''));
+    } else if (e.key === 'Backspace' && s === en && s > 0) {
+      const ls = v.lastIndexOf('\n', s - 1) + 1; const pre = v.slice(ls, s);
+      if (pre.length && /^ +$/.test(pre) && pre.length % 2 === 0) { e.preventDefault(); ta.setSelectionRange(s - 2, s); this.insert(''); }
+    }
+  }
+  getValue() { return this.ta.value; }
+  setValue(v) { const top = this.ta.scrollTop; this.ta.value = v; this.render(); this.ta.scrollTop = top; this.sync(); }
+  gotoLine(n) {
+    const lines = this.ta.value.split('\n'); n = Math.max(1, Math.min(n, lines.length)); let pos = 0;
+    for (let i = 0; i < n - 1; i++) pos += lines[i].length + 1;
+    this.ta.focus(); this.ta.setSelectionRange(pos, pos + lines[n - 1].length);
+    this.ta.scrollTop = Math.max(0, (n - 5) * parseFloat(getComputedStyle(this.ta).lineHeight)); this.sync();
+  }
+  focus() { this.ta.focus(); }
+  destroy() { this.host.innerHTML = ''; }
+}
+
+/* ------------------------------------------------------------ CodeMirror 6 (opcional, por CDN) */
+const CM_DEPS = 'deps=@codemirror/state@6.4.1,@codemirror/view@6.26.3,@codemirror/language@6.10.1,@codemirror/autocomplete@6.16.0,@lezer/common@1.2.1,@lezer/highlight@1.2.0';
+let CM = null;
+async function loadCodeMirror() {
+  const u = p => `https://esm.sh/${p}?${CM_DEPS}`;
+  const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('tiempo de espera agotado')), 9000));
+  const [cm, view, state, cmds, lh, lc, lj, theme] = await Promise.race([Promise.all([
+    import(u('codemirror@6.0.1')), import(u('@codemirror/view@6.26.3')), import(u('@codemirror/state@6.4.1')), import(u('@codemirror/commands@6.5.0')),
+    import(u('@codemirror/lang-html@6.4.9')), import(u('@codemirror/lang-css@6.2.1')), import(u('@codemirror/lang-javascript@6.2.2')),
+    import(u('@codemirror/theme-one-dark@6.1.2'))
+  ]), timeout]);
+  return { basicSetup: cm.basicSetup, EditorView: view.EditorView, EditorState: state.EditorState, keymap: view.keymap, indentWithTab: cmds.indentWithTab,
+    langs: { html: lh.html, css: lc.css, js: lj.javascript, plain: null }, oneDark: theme.oneDark };
+}
+class CMEditor {
+  constructor(host, onChange) {
+    this.host = host; this.onChange = onChange; this.silent = false; this.states = new Map(); this.cur = null;
+    host.innerHTML = '';
+    this.cmv = new CM.EditorView({ parent: host, state: this.make('', 'plain') });
+  }
+  make(doc, lang) {
+    const { EditorView, EditorState, basicSetup, keymap, indentWithTab, langs, oneDark } = CM;
+    return EditorState.create({ doc, extensions: [basicSetup, keymap.of([indentWithTab]), langs[lang] ? langs[lang]() : [], oneDark,
+      EditorView.updateListener.of(u => { if (u.docChanged && !this.silent) this.onChange(); }),
+      EditorView.theme({ '&': { backgroundColor: 'var(--panel)' }, '.cm-gutters': { backgroundColor: 'var(--panel)' } })] });
+  }
+  load(text, lang, _view, path) {
+    if (this.cur) this.states.set(this.cur, this.cmv.state);
+    this.cur = path || null;
+    const cached = path && this.states.get(path);
+    this.cmv.setState(cached && cached.doc.toString() === text ? cached : this.make(text, lang));
+  }
+  snapshot() { return null; }
+  forget(path) { this.states.delete(path); if (this.cur === path) this.cur = null; }
+  getValue() { return this.cmv.state.doc.toString(); }
+  setValue(v) { this.silent = true; this.cmv.dispatch({ changes: { from: 0, to: this.cmv.state.doc.length, insert: v } }); this.silent = false; }
+  gotoLine(n) { const doc = this.cmv.state.doc; const line = doc.line(Math.max(1, Math.min(n, doc.lines))); this.cmv.dispatch({ selection: { anchor: line.from, head: line.to }, scrollIntoView: true }); this.cmv.focus(); }
+  focus() { this.cmv.focus(); }
+  destroy() { this.cmv.destroy(); this.host.innerHTML = ''; }
+}
+
+/* ------------------------------------------------------------ gestor del editor (un editor para el archivo activo) */
+const Ed = {
+  kind: 'lite', inst: null, path: null, views: new Map(),
+  overlay(html, cls = '') {
+    $('#edHost').querySelector('.imgview')?.remove();
+    if (html == null) return null;
+    const ov = document.createElement('div'); ov.className = 'imgview ' + cls; ov.innerHTML = html; $('#edHost').appendChild(ov); return ov;
+  },
+  mount(kind) {
+    const cur = this.path; this.inst?.destroy(); this.views.clear();
+    this.kind = kind;
+    this.inst = kind === 'cm' ? new CMEditor($('#edHost'), () => this.changed()) : new LiteEditor($('#edHost'), () => this.changed());
+    this.path = null;
+    if (cur && App.project?.files[cur]) this.open(cur); else this.showEmpty();
+    $('#engineTxt').textContent = kind === 'cm' ? 'Editor: CodeMirror 6' : 'Editor ligero';
+  },
+  changed() {
+    const f = App.project?.files[this.path]; if (!f || f.binary) return;
+    f.content = this.inst.getValue(); App.touched(this.path, 'ui');
+  },
+  showEmpty(msg) {
+    if (this.path && this.kind === 'lite') this.views.set(this.path, this.inst.snapshot());
+    this.path = null; this.inst.load('', 'plain', null, null);
+    this.overlay(`<svg class="i" style="width:26px;height:26px"><use href="#i-file"/></svg><div>${esc(msg || 'Abre un archivo desde el panel de archivos')}</div>`, 'blank');
+    UI.edHead();
+  },
+  open(path) {
+    const f = App.project.files[path]; if (!f) return;
+    const prev = this.path;
+    if (prev && prev !== path && this.kind === 'lite' && App.project.files[prev] && !App.project.files[prev].binary) this.views.set(prev, this.inst.snapshot());
+    this.path = path;
+    if (f.binary) {
+      const isImg = /^data:image\//.test(f.content);
+      const ov = this.overlay(`${isImg ? '<img alt="">' : '<svg class="i" style="width:30px;height:30px"><use href="#i-file"/></svg>'}<div>${esc(path)} · ${fmtBytes(dataUrlSize(f.content))}${isImg ? '' : ' · archivo binario'}</div>`);
+      if (isImg) ov.querySelector('img').src = f.content;
+    } else {
+      this.overlay(null);
+      this.inst.load(f.content, langOf(path), this.views.get(path), path);
+    }
+    UI.edHead();
+  },
+  external(path) {
+    if (this.kind === 'cm' && path !== this.path) this.inst.forget(path);
+    if (path !== this.path) return;
+    const f = App.project.files[path];
+    if (!f) return this.showEmpty();
+    if (f.binary) return this.open(path);
+    if (this.inst.getValue() !== f.content) this.inst.setValue(f.content);
+    UI.edHead();
+  },
+  forget(path) { this.views.delete(path); if (this.kind === 'cm') this.inst.forget(path); }
+};
+
+/* ------------------------------------------------------------ consola */
+const Konsole = {
+  items: [], filter: 'all', keep: prefs.get('keepConsole', false), MAX: 500,
+  ICONS: { log: 'i-chev', info: 'i-info', debug: 'i-chev', warn: 'i-alert', error: 'i-err', system: 'i-play', mcp: 'i-bot' },
+  push(type, message, run, loc = '') {
+    message = String(message);
+    const last = this.items[this.items.length - 1];
+    if (last && last.type === type && last.message === message && last.run === run && last.loc === loc) { last.count++; last.time = Date.now(); this.render(); return; }
+    this.items.push({ type, message, time: Date.now(), run, count: 1, loc });
+    if (this.items.length > this.MAX) this.items.splice(0, this.items.length - this.MAX);
+    this.render();
+  },
+  clear() { this.items = []; this.render(); },
+  group(t) { return t === 'error' ? 'error' : t === 'warn' ? 'warn' : (t === 'log' || t === 'info' || t === 'debug') ? 'log' : 'other'; },
+  render: null
+};
+Konsole.render = debounce(() => {
+  const list = $('#conList');
+  const c = { all: 0, log: 0, warn: 0, error: 0 };
+  for (const it of Konsole.items) { const g = Konsole.group(it.type); c.all += it.count; if (c[g] !== undefined) c[g] += it.count; }
+  $('#nAll').textContent = c.all; $('#nLog').textContent = c.log; $('#nWarn').textContent = c.warn; $('#nErr').textContent = c.error;
+  const mb = $('#mBadge'); mb.textContent = c.error; mb.classList.toggle('show', c.error > 0);
+  const shown = Konsole.items.filter(it => Konsole.filter === 'all' || Konsole.group(it.type) === Konsole.filter);
+  if (!shown.length) { list.innerHTML = `<div class="empty"><svg class="i"><use href="#i-terminal"/></svg>${Konsole.items.length ? 'Nada con este filtro.' : 'La consola está vacía.'}</div>`; return; }
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  list.innerHTML = shown.map(it => `<div class="cl ${it.type === 'debug' ? 'log' : it.type}"><svg class="i ic"><use href="#${Konsole.ICONS[it.type] || 'i-chev'}"/></svg><div class="msg">${it.count > 1 ? `<span class="rep">${it.count}</span>` : ''}${it.loc ? `<span class="loc" data-loc="${esc(it.loc)}">${esc(it.loc)}</span>` : ''}${esc(it.message)}</div><span class="tm">${new Date(it.time).toLocaleTimeString('es-MX', { hour12: false })}</span></div>`).join('');
+  if (atBottom || shown.length < 30) list.scrollTop = list.scrollHeight;
+}, 30);
+
+/* ------------------------------------------------------------ constructor de la vista previa (multiarchivo) */
+const CODE_EXT = new Set(['html', 'htm', 'css', 'js', 'mjs', 'cjs']);
+const Builder = {
+  entryOf(project) {
+    if (project.files['index.html']) return 'index.html';
+    const html = Object.keys(project.files).filter(k => /\.html?$/i.test(k)).sort(P.cmp);
+    return html.find(k => P.base(k).toLowerCase() === 'index.html') || html[0] || null;
+  },
+  dataUrl(path, f) { return f.binary ? f.content : `data:${MIME[P.ext(path)] || 'text/plain'};charset=utf-8;base64,${b64utf8(f.content)}`; },
+  cssUrls(css, dir, files) {
+    return css.replace(/url\(\s*(["']?)([^"')]+)\1\s*\)/g, (m, q, ref) => { const p = P.resolve(dir, ref.trim()); return p && files[p] ? `url("${this.dataUrl(p, files[p])}")` : m; });
+  },
+  /* Devuelve { doc, segs, entry }. segs relaciona líneas del documento final con archivo:línea (para los errores). */
+  build(project, { runId = null } = {}) {
+    const files = project.files;
+    const entry = this.entryOf(project);
+    if (!entry) return { doc: '<!DOCTYPE html><html><body style="margin:0;height:100vh;display:grid;place-items:center;font-family:system-ui;color:#667;background:#f7f8fa"><p>Crea un archivo <b>index.html</b> para ver la vista previa.</p></body></html>', segs: [], entry: null };
+    const base = P.dir(entry);
+    const modCache = new Map();
+    const self = this;
+    const local = (dir, ref) => { const p = P.resolve(dir, ref); return p && files[p] ? p : null; };
+    function rewriteImports(code, dir, stack) {
+      return code.replace(/(\bfrom\s*|\bimport\s*\(?\s*)(["'])([^"'\n]+)\2/g, (m, a, q, spec) => {
+        if (!/^(\.{1,2}\/|\/)/.test(spec)) return m;
+        const p = local(dir, spec); if (!p) return m;
+        const f = files[p];
+        if (f.binary) return a + q + f.content + q;
+        if (/^(js|mjs)$/.test(P.ext(p))) { const u = modUrl(p, stack); return u ? a + q + u + q : m; }
+        return a + q + self.dataUrl(p, f) + q;
+      });
+    }
+    function modUrl(p, stack = []) {
+      if (modCache.has(p)) return modCache.get(p);
+      if (stack.includes(p)) return null;
+      const code = rewriteImports(files[p].content, P.dir(p), [...stack, p]) + '\n//@pg-file:' + p;
+      const u = 'data:text/javascript;base64,' + b64utf8(code);
+      modCache.set(p, u); return u;
+    }
+    let src = files[entry].content;
+    // 1) atributos que apuntan a archivos binarios del proyecto → data URL (no cambia líneas)
+    src = src.replace(/(\s(?:src|href|poster|data)\s*=\s*)(["'])([^"'<>]+)\2/gi, (m, a, q, ref) => { const p = local(base, ref); return p && files[p].binary ? a + q + files[p].content + q : m; });
+    // 2) un recorrido para <link stylesheet>, <script src>, <script type=module> y <style>
+    const re = /<link\b[^>]*>|<script\b([^>]*)>([\s\S]*?)<\/script\s*>|<style\b([^>]*)>([\s\S]*?)<\/style\s*>/gi;
+    let out = '', last = 0, docLine = 1; const segs = [{ d: 1, f: entry, l: 1 }];
+    const push = s => { out += s; docLine += countNL(s); };
+    src.replace(re, (m, sAttrs, sBody, stAttrs, stBody, idx) => {
+      let block = null, text = null;
+      if (/^<link/i.test(m)) {
+        const href = /\bhref\s*=\s*(["'])(.*?)\1/i.exec(m)?.[2];
+        if (/\brel\s*=\s*["']?stylesheet/i.test(m) && href) { const p = local(base, href); if (p && !files[p].binary) block = { open: `<style data-pg="${esc(p)}">`, body: this.cssUrls(files[p].content, P.dir(p), files), close: '</style>', path: p }; }
+      } else if (sAttrs !== undefined) {
+        const srcAttr = /\bsrc\s*=\s*(["'])(.*?)\1/i.exec(sAttrs)?.[2];
+        const isModule = /\btype\s*=\s*["']?module/i.test(sAttrs);
+        if (srcAttr) {
+          const p = local(base, srcAttr);
+          if (p && !files[p].binary) {
+            if (isModule) { const u = modUrl(p); if (u) text = `<script type="module" src="${u}"><\/script>`; }
+            else block = { open: `<script data-pg="${esc(p)}">`, body: files[p].content.replace(/<\/script/gi, '<\\/script'), close: '<\/script>', path: p };
+          }
+        } else if (isModule) text = `<script${sAttrs}>${rewriteImports(sBody, base, [])}<\/script>`;
+      } else if (stAttrs !== undefined) {
+        text = `<style${stAttrs}>${this.cssUrls(stBody, base, files)}</style>`;
+      }
+      if (block) {
+        push(src.slice(last, idx)); push(block.open + '\n');
+        segs.push({ d: docLine, f: block.path, l: 1 });
+        push(block.body); push('\n' + block.close);
+        const endIdx = idx + m.length;
+        segs.push({ d: docLine, f: entry, l: 1 + countNL(src.slice(0, endIdx)) });
+        last = endIdx;
+      } else if (text !== null) { push(src.slice(last, idx)); push(text); last = idx + m.length; }
+      return m;
+    });
+    push(src.slice(last));
+    // 3) recursos para fetch/XHR/img/audio en tiempo de ejecución (imágenes, json, sonidos…)
+    const assets = {};
+    for (const [p, f] of Object.entries(files)) if (f.binary || !CODE_EXT.has(P.ext(p))) assets[p] = this.dataUrl(p, f);
+    // 4) runtime insertado en la misma línea (no mueve números de línea)
+    const at = /<head\b[^>]*>/i.exec(out) || /<html\b[^>]*>/i.exec(out) || /<!doctype[^>]*>/i.exec(out);
+    const rtLine = at ? countNL(out.slice(0, at.index)) + 1 : 1;
+    const runtime = this.runtime(runId, segs, base, assets, rtLine);
+    const doc = at ? out.slice(0, at.index + at[0].length) + runtime + out.slice(at.index + at[0].length) : runtime + out;
+    return { doc, segs, entry };
+  },
+  runtime(runId, segs, base, assets, rtLine) {
+    const J = o => JSON.stringify(o).replace(/</g, '\\u003c').replace(/[\u2028\u2029]/g, '');
+    const parts = ['(function(){'];
+    if (Object.keys(assets).length) parts.push(
+      `var F=${J(assets)},B=${J(base ? base.split('/') : [])};`,
+      'function R(u){try{if(u&&typeof u==="object")u=u.url||String(u);if(typeof u!=="string")return null;if(/^[a-z][\\w+.-]*:|^\\/\\//i.test(u))return null;u=u.split(/[?#]/)[0];var p=u.charAt(0)==="/"?[]:B.slice();u.split("/").forEach(function(s){if(!s||s===".")return;if(s==="..")p.pop();else p.push(decodeURIComponent(s))});var k=p.join("/");return Object.prototype.hasOwnProperty.call(F,k)?F[k]:null}catch(e){return null}}',
+      'window.__pgAsset=R;var of=window.fetch;if(of)window.fetch=function(i,o){var d=R(i);return d?of.call(this,d,o):of.apply(this,arguments)};',
+      'var xo=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u){var d=R(u);var a=[].slice.call(arguments);if(d)a[1]=d;return xo.apply(this,a)};',
+      '[window.HTMLImageElement,window.HTMLMediaElement,window.HTMLSourceElement].forEach(function(C){if(!C)return;var d=Object.getOwnPropertyDescriptor(C.prototype,"src");if(!d||!d.set)return;Object.defineProperty(C.prototype,"src",{configurable:true,enumerable:d.enumerable,get:d.get,set:function(v){d.set.call(this,R(v)||v)}})});',
+      'var sa=Element.prototype.setAttribute;Element.prototype.setAttribute=function(n,v){if((n==="src"||n==="href")&&typeof v==="string"){var x=R(v);if(x)v=x}return sa.call(this,n,v)};'
+    );
+    if (runId != null) parts.push(
+      `var RID=${runId},S=${J(segs)},RL=${rtLine},PP=window.parent;`,
+      'function L(f,l){if(!l)return"";if(f&&f.indexOf("data:text/javascript")===0){try{var m=/\\/\\/@pg-file:(.+)\\s*$/.exec(decodeURIComponent(escape(atob(f.split(",")[1]))));if(m)return m[1]+":"+l}catch(e){}return""}for(var i=S.length-1;i>=0;i--)if(S[i].d<=l)return S[i].f+":"+(S[i].l+l-S[i].d);return""}',
+      'function st(e){try{var t=String(e&&e.stack||"").split("\\n");for(var i=0;i<t.length;i++){var m=/(data:text\\/javascript[^)\\s]*?|about:srcdoc):(\\d+):\\d+/.exec(t[i]);if(!m)continue;var src=m[1].indexOf("about:")===0;if(src&&+m[2]===RL)continue;var r=L(src?"":m[1],+m[2]);if(r)return r}}catch(x){}return""}',
+      'function s(v,d,seen){d=d||0;seen=seen||[];try{if(v===null)return"null";if(v===undefined)return"undefined";var t=typeof v;if(t==="string")return d?JSON.stringify(v):v;if(t==="number"||t==="boolean")return String(v);if(t==="bigint")return v+"n";if(t==="symbol")return v.toString();if(t==="function")return"ƒ "+(v.name||"anónima")+"()";if(v instanceof Error)return(v.name||"Error")+": "+v.message;if(typeof Element!=="undefined"&&v instanceof Element)return"<"+v.tagName.toLowerCase()+(v.id?"#"+v.id:"")+(typeof v.className==="string"&&v.className.trim()?"."+v.className.trim().split(/\\s+/).join("."):"")+">";if(seen.indexOf(v)>-1)return"[Circular]";if(d>2)return Array.isArray(v)?"[…]":"{…}";seen.push(v);if(Array.isArray(v))return"["+v.slice(0,50).map(function(x){return s(x,d+1,seen)}).join(", ")+(v.length>50?", …("+v.length+")":"")+"]";if(v instanceof Map)return"Map("+v.size+")";if(v instanceof Set)return"Set("+v.size+")";if(v instanceof Date)return v.toISOString();var k=Object.keys(v);var n=v.constructor&&v.constructor!==Object&&v.constructor.name?v.constructor.name+" ":"";return n+"{"+k.slice(0,30).map(function(x){return x+": "+s(v[x],d+1,seen)}).join(", ")+(k.length>30?", …":"")+"}"}catch(e){return String(v)}}',
+      'function send(type,args,loc){try{PP.postMessage({__pg:1,run:RID,type:type,loc:loc||"",message:[].map.call(args,function(a){return s(a)}).join(" ")},"*")}catch(e){}}',
+      '["log","info","warn","error","debug"].forEach(function(t){var o=console[t];console[t]=function(){send(t,arguments,t==="error"||t==="warn"?st(new Error()):"");try{o.apply(console,arguments)}catch(e){}}});',
+      'var ot=console.table;console.table=function(d){send("log",[d]);try{ot.apply(console,arguments)}catch(e){}};',
+      'console.clear=function(){try{PP.postMessage({__pg:1,run:RID,type:"clear"},"*")}catch(e){}};',
+      'window.addEventListener("error",function(e){if(e.target&&e.target!==window&&e.target.tagName){send("error",["No se pudo cargar "+String(e.target.src||e.target.href||e.target.tagName).slice(0,120)]);return}var f=e.filename||"";var loc=L(f.indexOf("data:")===0?f:"",e.lineno)||st(e.error);send("error",[(e.message||"Error").replace(/^Uncaught /,"")],loc)},true);',
+      'window.addEventListener("unhandledrejection",function(e){var r=e.reason;send("error",["Promesa rechazada: "+(r&&r.message?r.message:s(r))],st(r))});',
+      'window.addEventListener("load",function(){setTimeout(function(){try{PP.postMessage({__pg:1,run:RID,type:"ready"},"*")}catch(e){}},0)});'
+    );
+    parts.push('})();');
+    return '<script>' + parts.join('') + '<\/script>';
+  }
+};
+
+const Preview = {
+  runId: 0, pending: null, startedAt: 0,
+  run(source = 'manual') {
+    const id = ++this.runId;
+    if (!Konsole.keep) Konsole.clear();
+    Konsole.push('system', `▶ Ejecución #${id}${source === 'auto' ? ' (automática)' : source === 'mcp' ? ' (Claude)' : ''}`, id);
+    this.startedAt = performance.now();
+    if (this.pending) { clearTimeout(this.pending.timer); this.pending.resolve({ ok: false, runId: this.pending.id, superseded: true }); }
+    const p = {}; p.promise = new Promise(res => (p.resolve = res)); p.id = id; this.pending = p;
+    let built;
+    try { built = Builder.build(App.project, { runId: id }); }
+    catch (e) { Konsole.push('error', 'Error al preparar la vista: ' + e.message, id); this.pending = null; p.resolve({ ok: false, runId: id, errors: 1 }); return p.promise; }
+    p.timer = setTimeout(() => this.finish(id, true), 6000);
+    $('#preview').srcdoc = built.doc;
+    const f = $('#runFlash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+    return p.promise;
+  },
+  finish(id, timedOut) {
+    const p = this.pending; if (!p || p.id !== id) return;
+    clearTimeout(p.timer); this.pending = null;
+    const ms = Math.round(performance.now() - this.startedAt);
+    const errors = Konsole.items.filter(i => i.run === id && i.type === 'error').reduce((a, i) => a + i.count, 0);
+    if (timedOut) Konsole.push('warn', 'La página tardó más de 6 s en cargar (¿bucle infinito o recursos lentos?)', id);
+    else Konsole.push('system', `✓ Lista en ${ms} ms${errors ? ` · ${errors} error(es)` : ''}`, id);
+    $('#runInfo').textContent = `Ejecución #${id} · ${ms} ms`;
+    p.resolve({ ok: !timedOut && errors === 0, runId: id, durationMs: ms, errors, timedOut: !!timedOut });
+  }
+};
+window.addEventListener('message', e => {
+  const d = e.data; if (!d || d.__pg !== 1) return;
+  if (e.source !== $('#preview').contentWindow || d.run !== Preview.runId) return;
+  if (d.type === 'ready') return Preview.finish(d.run, false);
+  if (d.type === 'clear') { Konsole.items = Konsole.items.filter(i => i.run !== d.run || i.type === 'system'); Konsole.render(); return; }
+  if (['log', 'info', 'warn', 'error', 'debug'].includes(d.type)) Konsole.push(d.type, String(d.message ?? '').slice(0, 20000), d.run, String(d.loc || '').slice(0, 200));
+});
+
+/* ------------------------------------------------------------ ZIP (sin compresión, sin librerías) */
+const Zip = {
+  crcT: null,
+  crc(buf) { if (!this.crcT) { this.crcT = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; this.crcT[n] = c >>> 0; } } let c = 0xFFFFFFFF; for (let i = 0; i < buf.length; i++) c = this.crcT[(c ^ buf[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; },
+  make(entries) {
+    const enc = new TextEncoder(); const chunks = []; const central = []; let off = 0;
+    const d = new Date(); const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1); const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+    for (const { name, data } of entries) {
+      const nb = enc.encode(name); const crc = this.crc(data);
+      const h = new DataView(new ArrayBuffer(30));
+      h.setUint32(0, 0x04034b50, true); h.setUint16(4, 20, true); h.setUint16(6, 0x0800, true); h.setUint16(8, 0, true); h.setUint16(10, time, true); h.setUint16(12, date, true);
+      h.setUint32(14, crc, true); h.setUint32(18, data.length, true); h.setUint32(22, data.length, true); h.setUint16(26, nb.length, true); h.setUint16(28, 0, true);
+      chunks.push(new Uint8Array(h.buffer), nb, data);
+      const c = new DataView(new ArrayBuffer(46));
+      c.setUint32(0, 0x02014b50, true); c.setUint16(4, 20, true); c.setUint16(6, 20, true); c.setUint16(8, 0x0800, true); c.setUint16(10, 0, true); c.setUint16(12, time, true); c.setUint16(14, date, true);
+      c.setUint32(16, crc, true); c.setUint32(20, data.length, true); c.setUint32(24, data.length, true); c.setUint16(28, nb.length, true); c.setUint32(42, off, true);
+      central.push(new Uint8Array(c.buffer), nb);
+      off += 30 + nb.length + data.length;
+    }
+    const cdSize = central.reduce((a, b) => a + b.length, 0);
+    const e = new DataView(new ArrayBuffer(22));
+    e.setUint32(0, 0x06054b50, true); e.setUint16(8, entries.length, true); e.setUint16(10, entries.length, true); e.setUint32(12, cdSize, true); e.setUint32(16, off, true);
+    return new Blob([...chunks, ...central, new Uint8Array(e.buffer)], { type: 'application/zip' });
+  }
+};
+
+/* ------------------------------------------------------------ estado del proyecto abierto */
+const App = {
+  project: null, dirty: false, autosave: prefs.get('autosave', true),
+  tabs: [], expanded: new Set(), selFolder: '', view: 'home',
+  load(p) {
+    this.project = p; this.dirty = false;
+    const st = prefs.get('ui:' + p.id, null) || {};
+    this.tabs = (st.tabs || []).filter(t => p.files[t]);
+    const folders = this.folders();
+    this.expanded = new Set((st.expanded || []).filter(f => folders.includes(f)));
+    this.selFolder = '';
+    const first = st.active && p.files[st.active] ? st.active : (this.tabs[0] || Builder.entryOf(p) || Object.keys(p.files).sort(P.cmp)[0] || null);
+    if (first && !this.tabs.includes(first)) this.tabs.push(first);
+    $('#projName').value = p.name; document.title = `${p.name} · Mi Playground`;
+    prefs.set('lastId', p.id);
+    this.setDirty(false);
+    if (first) { this.reveal(first); Ed.open(first); } else Ed.showEmpty('Este proyecto no tiene archivos todavía');
+    UI.tree(); UI.tabs(); UI.files();
+    if (p.migrated) { delete p.migrated; this.save({ silent: true }).catch(() => {}); }
+    Snap.auto('Al abrir el proyecto', 3600000);
+    Preview.run('load');
+  },
+  saveUi() { if (this.project) prefs.set('ui:' + this.project.id, { tabs: this.tabs, active: Ed.path, expanded: [...this.expanded] }); },
+  paths() { return Object.keys(this.project.files).sort(P.cmp); },
+  folders() {
+    const s = new Set();
+    for (const f of this.project?.folders || []) { let d = f; while (d) { s.add(d); d = P.dir(d); } }
+    for (const p of Object.keys(this.project?.files || {})) { let d = P.dir(p); while (d) { s.add(d); d = P.dir(d); } }
+    return [...s].sort(P.cmp);
+  },
+  isFolder(p) { return this.folders().includes(p); },
+  reveal(path) { let d = P.dir(path); while (d) { this.expanded.add(d); d = P.dir(d); } },
+  touched(path, source) {
+    this.setDirty(true);
+    if (source !== 'ui') Ed.external(path);
+    if (Ed.path === path) UI.edHead();
+    if ($('#autoRun').checked) this.autoRun();
+    if (this.autosave) this.autoSave();
+  },
+  structure() { this.setDirty(true); UI.tree(); UI.tabs(); UI.files(); this.saveUi(); if ($('#autoRun').checked) this.autoRun(); if (this.autosave) this.autoSave(); },
+  autoRun: debounce(() => { if (App.project) Preview.run('auto'); }, 650),
+  autoSave: debounce(() => App.save({ silent: true }).catch(() => {}), 1200),
+  setDirty(d) { this.dirty = d; const st = $('#saveState'); st.className = 'save-state ' + (d ? 'dirty' : 'saved'); $('#saveText').textContent = d ? 'Sin guardar' : 'Guardado'; },
+  async save({ silent = false } = {}) {
+    if (!this.project) throw new Error('No hay proyecto abierto');
+    this.autoSave.cancel();
+    const st = $('#saveState'); st.className = 'save-state saving'; $('#saveText').textContent = 'Guardando…';
+    try { this.project.updatedAt = Date.now(); await Store.put(this.project); this.setDirty(false); this.saveUi(); if (!silent) toast('Proyecto guardado', 'ok'); return this.project; }
+    catch (e) { this.setDirty(true); toast('No se pudo guardar: ' + e.message, 'err'); throw e; }
+  },
+  /* ---------- operaciones con archivos (las usan la interfaz y la API) ---------- */
+  writeFile(path, content, opts = {}) {
+    path = P.norm(path);
+    if (this.isFolder(path)) throw new Error(`"${path}" es una carpeta`);
+    if (typeof content !== 'string') throw new Error('El contenido debe ser texto');
+    if (content.length > 5_000_000) throw new Error('Archivo demasiado grande (máx. 5 MB)');
+    const files = this.project.files;
+    const isNew = !files[path];
+    if (isNew && Object.keys(files).length >= 500) throw new Error('Límite de 500 archivos por proyecto');
+    let d = P.dir(path); while (d) { if (files[d]) throw new Error(`"${d}" es un archivo, no una carpeta`); d = P.dir(d); }
+    files[path] = opts.binary ? { content, binary: true } : { content };
+    if (isNew) { this.reveal(path); this.structure(); }
+    this.touched(path, opts.source || 'api');
+    return { path, isNew };
+  },
+  mkdir(path) {
+    path = P.norm(path);
+    if (this.project.files[path]) throw new Error(`Ya existe un archivo "${path}"`);
+    let d = P.dir(path); while (d) { if (this.project.files[d]) throw new Error(`"${d}" es un archivo, no una carpeta`); d = P.dir(d); }
+    if (!this.isFolder(path)) this.project.folders = [...(this.project.folders || []), path];
+    this.reveal(path + '/x'); this.structure();
+    return path;
+  },
+  remove(path) {
+    path = P.norm(path);
+    const snapshot = { files: {}, folders: [...(this.project.folders || [])] };
+    const wasFolder = this.isFolder(path);
+    let n = 0;
+    for (const p of Object.keys(this.project.files)) if (P.within(p, path)) { snapshot.files[p] = this.project.files[p]; delete this.project.files[p]; this.closeTab(p, true); Ed.forget(p); n++; }
+    this.project.folders = (this.project.folders || []).filter(f => !P.within(f, path));
+    if (!n && !wasFolder) throw new Error(`No existe "${path}"`);
+    if (Ed.path && !this.project.files[Ed.path]) { const next = this.tabs[this.tabs.length - 1]; next ? Ed.open(next) : Ed.showEmpty(); }
+    this.structure();
+    return { removed: n, snapshot };
+  },
+  restore(snapshot) { Object.assign(this.project.files, snapshot.files); this.project.folders = snapshot.folders; this.structure(); toast('Restaurado', 'ok'); },
+  move(from, to) {
+    from = P.norm(from); to = P.norm(to);
+    if (from === to) return { moved: 0, to };
+    if (P.within(to, from)) throw new Error('No puedes mover una carpeta dentro de sí misma');
+    const files = this.project.files;
+    let d = P.dir(to); while (d) { if (files[d]) throw new Error(`"${d}" es un archivo, no una carpeta`); d = P.dir(d); }
+    if (files[from]) {
+      if (files[to] || this.isFolder(to)) throw new Error(`Ya existe "${to}"`);
+      files[to] = files[from]; delete files[from];
+      this.tabs = this.tabs.map(t => t === from ? to : t); Ed.forget(from);
+      if (Ed.path === from) Ed.path = to;
+      this.reveal(to); this.structure(); UI.edHead();
+      return { moved: 1, to };
+    }
+    if (!this.isFolder(from)) throw new Error(`No existe "${from}"`);
+    if (files[to]) throw new Error(`Ya existe un archivo "${to}"`);
+    const moving = Object.keys(files).filter(p => P.within(p, from));
+    for (const p of moving) { const np = to + p.slice(from.length); if (files[np]) throw new Error(`Ya existe "${np}"`); }
+    for (const p of moving) {
+      const np = to + p.slice(from.length);
+      files[np] = files[p]; delete files[p];
+      this.tabs = this.tabs.map(t => t === p ? np : t); Ed.forget(p);
+      if (Ed.path === p) Ed.path = np;
+    }
+    this.project.folders = (this.project.folders || []).map(f => P.within(f, from) ? to + f.slice(from.length) : f);
+    if (!moving.length) this.project.folders.push(to);
+    this.expanded = new Set([...this.expanded].map(f => P.within(f, from) ? to + f.slice(from.length) : f));
+    this.reveal(to + '/x'); this.structure(); UI.edHead();
+    return { moved: moving.length, to };
+  },
+  openFile(path) {
+    if (!this.project.files[path]) return;
+    if (!this.tabs.includes(path)) this.tabs.push(path);
+    this.reveal(path); Ed.open(path); UI.tabs(); UI.tree(); this.saveUi();
+  },
+  closeTab(path, silent) {
+    const i = this.tabs.indexOf(path); if (i < 0) return;
+    this.tabs.splice(i, 1);
+    if (silent) return;
+    if (Ed.path === path) { const next = this.tabs[i] || this.tabs[i - 1]; next ? Ed.open(next) : Ed.showEmpty(); }
+    UI.tabs(); UI.tree(); this.saveUi();
+  }
+};
+
+/* ------------------------------------------------------------ interfaz */
+const UI = {
+  pane: prefs.get('pane', 'code'),
+  edHead() {
+    const p = Ed.path; const f = p && App.project?.files[p];
+    const [cls, lbl] = p ? iconOf(p, f) : ['other', ''];
+    const ic = $('#edIcon'); ic.className = 'fic ' + cls; ic.textContent = lbl.slice(0, 3);
+    $('#edPath').textContent = p || 'Sin archivo';
+    $('#edMeta').textContent = f ? (f.binary ? fmtBytes(dataUrlSize(f.content)) : `${countNL(f.content) + 1} líneas · ${fmtBytes(f.content.length)}`) : '';
+    $('#edCopy').disabled = $('#edClear').disabled = !f || !!f.binary;
+    $$('.tab').forEach(t => t.classList.toggle('on', t.dataset.path === p));
+    $$('#tree .tr.file').forEach(t => t.classList.toggle('on', t.dataset.path === p));
+  },
+  files() { const n = Object.keys(App.project.files).length; $('#filesTxt').textContent = `${n} archivo${n === 1 ? '' : 's'} · ${Store.mode === 'indexeddb' ? 'IndexedDB' : 'localStorage'}`; },
+  tree() {
+    const root = { dirs: new Map(), files: [] };
+    const node = path => { let n = root; if (!path) return n; for (const part of path.split('/')) { if (!n.dirs.has(part)) n.dirs.set(part, { dirs: new Map(), files: [] }); n = n.dirs.get(part); } return n; };
+    App.folders().forEach(f => node(f));
+    App.paths().forEach(p => node(P.dir(p)).files.push(p));
+    let html = '';
+    const walk = (n, prefix, depth) => {
+      for (const name of [...n.dirs.keys()].sort(P.cmp)) {
+        const path = P.join(prefix, name); const open = App.expanded.has(path);
+        html += `<div class="tr dir${open ? ' open' : ''}${App.selFolder === path ? ' sel' : ''}" role="treeitem" aria-expanded="${open}" data-path="${esc(path)}" data-kind="dir" style="padding-left:${6 + depth * 14}px"><svg class="i chev"><use href="#i-chev"/></svg><svg class="i fic folder"><use href="#i-folder"/></svg><span class="nm">${esc(name)}</span><button class="tbtn more" data-more title="Opciones de ${esc(name)}"><svg class="i"><use href="#i-more"/></svg></button></div>`;
+        if (open) walk(n.dirs.get(name), path, depth + 1);
+      }
+      for (const p of n.files.sort(P.cmp)) {
+        const [cls, lbl] = iconOf(p, App.project.files[p]);
+        html += `<div class="tr file${Ed.path === p ? ' on' : ''}" role="treeitem" data-path="${esc(p)}" data-kind="file" style="padding-left:${26 + depth * 14}px"><span class="fic ${cls}">${esc(lbl.slice(0, 3))}</span><span class="nm">${esc(P.base(p))}</span><button class="tbtn more" data-more title="Opciones de ${esc(P.base(p))}"><svg class="i"><use href="#i-more"/></svg></button></div>`;
+      }
+    };
+    walk(root, '', 0);
+    $('#tree').innerHTML = html || '<div class="tree-empty">Sin archivos.<br>Toca ＋ para crear uno.</div>';
+    if (!isNarrow()) $$('#tree .tr').forEach(r => r.draggable = true);
+  },
+  flash(path) { const el = $(`#tree .tr[data-path="${CSS.escape(path)}"]`); if (el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } },
+  tabs() {
+    const names = App.tabs.map(P.base);
+    $('#tabs').innerHTML = App.tabs.map((t, i) => {
+      const [cls, lbl] = iconOf(t, App.project.files[t]); const dup = names.filter(n => n === names[i]).length > 1;
+      return `<div class="tab${t === Ed.path ? ' on' : ''}" data-path="${esc(t)}" title="${esc(t)}"><span class="fic ${cls}">${esc(lbl.slice(0, 3))}</span>${esc(P.base(t))}${dup ? `<span class="dir">${esc(P.dir(t) || '/')}</span>` : ''}<button class="x" data-x title="Cerrar ${esc(P.base(t))}"><svg class="i"><use href="#i-x"/></svg></button></div>`;
+    }).join('');
+    $('.tab.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  },
+  setPane(v) {
+    this.pane = v; prefs.set('pane', v);
+    $$('.mtab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === v));
+    $$('#ws .pane').forEach(p => p.classList.toggle('active', p.dataset.pane === v));
+  },
+  async home() {
+    const q = $('#hSearch').value.trim().toLowerCase();
+    let list = [];
+    try { list = await Store.all(); } catch (e) { toast('Error al leer proyectos: ' + e.message, 'err'); }
+    if (App.project) { const i = list.findIndex(p => p.id === App.project.id); if (i >= 0) list[i] = App.project; }
+    $('#homeCount').textContent = list.length ? `${list.length} proyecto${list.length === 1 ? '' : 's'} guardado${list.length === 1 ? '' : 's'} en este navegador` : 'Aún no tienes proyectos';
+    const items = list.filter(p => !q || p.name.toLowerCase().includes(q));
+    const hue = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+    $('#cards').innerHTML = (q ? '' : `<button class="card card-new" id="cardNew"><svg class="i" style="width:22px;height:22px"><use href="#i-plus"/></svg><span>Nuevo proyecto</span></button>`) +
+      items.map(p => {
+        const keys = Object.keys(p.files); const exts = [...new Set(keys.map(k => P.ext(k)).filter(Boolean))].slice(0, 4);
+        const h = hue(p.id + p.name);
+        return `<div class="card${p.id === App.project?.id ? ' current' : ''}" data-id="${esc(p.id)}" tabindex="0" role="button" aria-label="Abrir ${esc(p.name)}">
+          <div class="card-thumb" style="--h1:hsl(${h} 55% 32%);--h2:hsl(${(h + 50) % 360} 60% 22%)"><span class="big">${esc((p.name.trim()[0] || '?').toUpperCase())}</span>${exts.map(e => `<span class="chip-ext">${esc(e)}</span>`).join('')}</div>
+          <div class="card-body"><div style="min-width:0"><div class="card-name">${esc(p.name)}</div><div class="card-sub">${keys.length} archivo${keys.length === 1 ? '' : 's'} · ${timeAgo(p.updatedAt)}</div></div>
+          <button class="tbtn" data-card-more title="Opciones"><svg class="i"><use href="#i-more"/></svg></button></div></div>`;
+      }).join('') + (q && !items.length ? '<div class="empty" style="grid-column:1/-1">Ningún proyecto coincide.</div>' : '');
+  },
+  show(view) {
+    App.view = view;
+    $('#home').classList.toggle('on', view === 'home');
+    $('#proj').classList.toggle('on', view === 'proj');
+    Ctx.close();
+    if (view === 'home') { document.title = 'Mi Playground'; this.home(); }
+  },
+  focusCode() { if (isNarrow()) this.setPane('code'); setTimeout(() => Ed.inst?.focus(), 40); }
+};
+
+/* ------------------------------------------------------------ menú contextual */
+const Ctx = {
+  open(anchor, items) {
+    const m = $('#ctx');
+    m.innerHTML = items.map((it, i) => it === '-' ? '<hr>' : `<button data-i="${i}" class="${it.danger ? 'danger' : ''}"><svg class="i"><use href="#${it.icon}"/></svg>${esc(it.label)}</button>`).join('');
+    m.onclick = e => { const b = e.target.closest('button[data-i]'); if (!b) return; this.close(); items[+b.dataset.i].run(); };
+    m.classList.add('open');
+    const r = anchor.getBoundingClientRect(); const mw = m.offsetWidth, mh = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+    m.style.top = (r.bottom + mh + 8 > innerHeight ? Math.max(8, r.top - mh - 4) : r.bottom + 4) + 'px';
+  },
+  close() { $('#ctx').classList.remove('open'); }
+};
+
+/* ------------------------------------------------------------ edición parcial (para Claude) */
+const Edit = {
+  lineOf(text, idx) { return countNL(text.slice(0, idx)) + 1; },
+  occurrences(text, s) { const out = []; if (!s) return out; let i = text.indexOf(s); while (i !== -1) { out.push(i); i = text.indexOf(s, i + s.length); } return out; },
+  hint(text, old) {
+    const first = old.split('\n').map(l => l.trim()).find(l => l.length > 2) || old.trim();
+    const norm = s => s.replace(/\s+/g, ' ').trim();
+    const ws = norm(text).includes(norm(old)) ? ' El texto sí existe, pero con otros espacios o sangría: copia la sangría exacta.' : '';
+    if (!first) return ws;
+    const bigrams = s => { const b = new Map(); const t = s.toLowerCase().replace(/\s+/g, ' '); for (let i = 0; i < t.length - 1; i++) { const k = t.slice(i, i + 2); b.set(k, (b.get(k) || 0) + 1); } return b; };
+    const A = bigrams(first); const asz = Math.max(1, first.length - 1); const cand = [];
+    text.split('\n').forEach((l, i) => {
+      const t = l.trim(); if (!t) return;
+      let sc;
+      if (t === first) sc = 2; else if (t.includes(first) || (first.includes(t) && t.length > 6)) sc = 1.5;
+      else { const B = bigrams(t); let inter = 0; for (const [k, v] of A) inter += Math.min(v, B.get(k) || 0); sc = 2 * inter / (asz + Math.max(1, t.length - 1)); }
+      if (sc > 0.45) cand.push([sc, i + 1, t]);
+    });
+    cand.sort((a, b) => b[0] - a[0]);
+    return (cand.length ? ' Líneas parecidas → ' + cand.slice(0, 3).map(c => `${c[1]}: ${c[2].slice(0, 120)}`).join(' | ') : ' Nada parecido; vuelve a leer esa parte.') + ws;
+  },
+  apply(text, edits) {
+    const changes = [];
+    edits.forEach((e, n) => {
+      const tag = edits.length > 1 ? `Edición ${n + 1}: ` : '';
+      if (!e || typeof e !== 'object') throw new Error(`${tag}formato no válido`);
+      const nw = String(e.new_text ?? e.new ?? '');
+      if (e.start_line != null) {
+        const lines = text.split('\n'); const total = lines.length;
+        const a = Math.floor(+e.start_line), b = e.end_line == null ? a : Math.floor(+e.end_line);
+        if (!(a >= 1 && a <= total + 1)) throw new Error(`${tag}start_line ${a} fuera de rango (el archivo tiene ${total} líneas)`);
+        if (!(b >= a - 1 && b <= total)) throw new Error(`${tag}end_line ${b} no válido (usa end_line = start_line - 1 para insertar sin borrar)`);
+        const ins = nw === '' ? [] : nw.replace(/\n$/, '').split('\n');
+        lines.splice(a - 1, b - a + 1, ...ins);
+        text = lines.join('\n');
+        changes.push({ line: a, removed: b - a + 1, added: ins.length });
+      } else {
+        const old = String(e.old_text ?? e.old ?? '');
+        if (!old) throw new Error(`${tag}falta old_text (o usa start_line/end_line)`);
+        const occ = this.occurrences(text, old);
+        if (!occ.length) throw new Error(`${tag}old_text no se encontró.` + this.hint(text, old));
+        if (occ.length > 1 && !e.replace_all) throw new Error(`${tag}old_text aparece ${occ.length} veces (líneas ${occ.slice(0, 8).map(i => this.lineOf(text, i)).join(', ')}). Agrega contexto para que sea único o usa replace_all.`);
+        const firstLine = this.lineOf(text, occ[0]);
+        text = e.replace_all ? text.split(old).join(nw) : text.slice(0, occ[0]) + nw + text.slice(occ[0] + old.length);
+        changes.push({ line: firstLine, removed: countNL(old) + 1, added: nw === '' ? 0 : countNL(nw) + 1, count: e.replace_all ? occ.length : 1 });
+      }
+    });
+    return { text, changes };
+  }
+};
+
+/* ------------------------------------------------------------ PlaygroundAPI v2 (respuestas de texto compacto = menos tokens) */
+const MAX_READ = 600;
+async function needProject() {
+  if (App.project) return;
+  const last = prefs.get('lastId', null); const p = last && await Store.get(last).catch(() => null);
+  if (p) { await Router.open(p.id); return; }
+  throw new Error('No hay proyecto abierto. Usa projects con action "list" y luego "open" o "create".');
+}
+const showProject = () => { if (App.view !== 'proj' && App.project) Router.open(App.project.id); };
+function treeText() {
+  const p = App.project; const lines = [];
+  const entry = Builder.entryOf(p);
+  lines.push(`Proyecto "${p.name}" (id ${p.id}) · ${Object.keys(p.files).length} archivos · entrada: ${entry || 'ninguna (crea index.html)'}${App.dirty ? ' · cambios sin guardar' : ''}`);
+  const all = [...new Set([...App.folders(), ...App.paths()])].sort(P.cmp);
+  for (const x of all) {
+    const pad = '  '.repeat(x.split('/').length - 1); const f = p.files[x];
+    lines.push(f ? `${pad}${P.base(x)} ${f.binary ? `[binario ${fmtBytes(dataUrlSize(f.content))}]` : `(${countNL(f.content) + 1})`}` : `${pad}${P.base(x)}/`);
+  }
+  return lines.join('\n');
+}
+function consoleText(items, limit) {
+  const rel = items.filter(i => i.type !== 'system');
+  const pick = rel.slice(-limit);
+  const older = rel.slice(0, -limit).filter(i => i.type === 'error').slice(-10);
+  return [...older, ...pick].map(i => `${i.type}${i.loc ? ' ' + i.loc : ''}: ${i.message.length > 400 ? i.message.slice(0, 400) + '…' : i.message}${i.count > 1 ? ` (×${i.count})` : ''}`).join('\n');
+}
+async function runSummary() {
+  App.autoRun.cancel();
+  const r = await Preview.run('mcp');
+  const body = consoleText(Konsole.items.filter(i => i.run === r.runId), 15);
+  return `▶ Ejecución #${r.runId}: ${r.timedOut ? 'TIEMPO AGOTADO (>6 s)' : `${r.durationMs} ms`} · ${r.errors || 0} error(es)` + (body ? '\n' + body : ' · consola vacía');
+}
+const API = {
+  version: '2.0.0',
+  async projects({ action = 'list', id, name } = {}) {
+    if (action === 'list') {
+      const list = await Store.all();
+      if (!list.length) return { text: 'No hay proyectos.' };
+      return { text: list.map(p => `${p.id === App.project?.id ? '▸' : '•'} ${p.name} (id ${p.id}) · ${Object.keys(p.files).length} archivos · ${timeAgo(p.updatedAt)}`).join('\n') };
+    }
+    if (action === 'open') {
+      const list = await Store.all(); const q = String(name || '').toLowerCase();
+      const p = list.find(x => x.id === id) || (q && (list.find(x => x.name.toLowerCase() === q) || list.find(x => x.name.toLowerCase().includes(q))));
+      if (!p) throw new Error('Proyecto no encontrado. Usa action "list".');
+      await Router.open(p.id);
+      return { text: treeText() };
+    }
+    if (action === 'create') { await createProject(name || 'Proyecto sin título', { blank: true }); return { text: 'Creado y abierto.\n' + treeText() }; }
+    await needProject();
+    if (action === 'save') { await App.save({ silent: true }); return { text: `Guardado "${App.project.name}".` }; }
+    if (action === 'rename') { if (!name) throw new Error('Falta name'); App.project.name = String(name).slice(0, 80); $('#projName').value = App.project.name; await App.save({ silent: true }); return { text: `Renombrado a "${App.project.name}".` }; }
+    throw new Error('action debe ser list, open, create, save o rename');
+  },
+  async tree() { await needProject(); return { text: treeText() }; },
+  async readFile({ path, start, end, numbered } = {}) {
+    await needProject(); path = P.norm(path);
+    const f = App.project.files[path];
+    if (!f) throw new Error(App.isFolder(path) ? `"${path}" es una carpeta. Usa tree.` : `No existe "${path}". Usa tree para ver las rutas.`);
+    if (f.binary) return { text: `${path}: binario ${fmtBytes(dataUrlSize(f.content))} (${f.content.slice(5, f.content.indexOf(';'))}). Úsalo por su ruta en HTML/CSS/JS.` };
+    const lines = f.content.split('\n'); const total = lines.length;
+    const a = Math.max(1, Math.floor(+start || 1));
+    if (a > total) throw new Error(`start ${a} es mayor que el total (${total} líneas)`);
+    const b = end == null ? Math.min(total, a + MAX_READ - 1) : Math.max(a, Math.min(total, Math.floor(+end)));
+    const cut = end == null && b < total;
+    const slice = lines.slice(a - 1, b);
+    const body = numbered ? slice.map((l, i) => `${a + i}|${l}`).join('\n') : slice.join('\n');
+    return { text: `${path} · ${total} líneas${a > 1 || b < total ? ` · ${a}-${b}` : ''}${cut ? ' (largo: pide start/end o usa search)' : ''}\n` + body };
+  },
+  async writeFile({ path, content, run } = {}) {
+    await needProject(); showProject(); await Snap.auto('Antes de cambios de Claude');
+    const r = App.writeFile(path, content ?? '', { source: 'api' });
+    UI.flash(r.path); Konsole.push('mcp', `Claude ${r.isNew ? 'creó' : 'reescribió'} ${r.path}`, Preview.runId);
+    let t = `✓ ${r.isNew ? 'Creado' : 'Reescrito'} ${r.path} (${countNL(content ?? '') + 1} líneas)`;
+    if (run) t += '\n' + await runSummary();
+    return { text: t };
+  },
+  async editFile({ path, edits, run } = {}) {
+    await needProject(); showProject(); await Snap.auto('Antes de cambios de Claude'); path = P.norm(path);
+    const f = App.project.files[path];
+    if (!f) throw new Error(`No existe "${path}". Usa write_file para crearlo.`);
+    if (f.binary) throw new Error('No se puede editar un archivo binario');
+    if (!Array.isArray(edits) || !edits.length) throw new Error('edits debe ser una lista con al menos una edición');
+    const { text, changes } = Edit.apply(f.content, edits); // si una falla, no se aplica ninguna
+    App.writeFile(path, text, { source: 'api' });
+    UI.flash(path); Konsole.push('mcp', `Claude editó ${path} (${changes.length} cambio${changes.length === 1 ? '' : 's'})`, Preview.runId);
+    let t = `✓ ${path} · ${countNL(text) + 1} líneas · ` + changes.map(c => `L${c.line}: −${c.removed} +${c.added}${c.count > 1 ? ` ×${c.count}` : ''}`).join(', ');
+    if (run) t += '\n' + await runSummary();
+    return { text: t };
+  },
+  async fileOp({ op, path, to, run } = {}) {
+    await needProject(); showProject();
+    if (op === 'delete') await Snap.take(`Antes de que Claude eliminara ${path}`); else await Snap.auto('Antes de cambios de Claude');
+    let t;
+    if (op === 'mkdir') t = `✓ Carpeta ${App.mkdir(path)}`;
+    else if (op === 'copy') {
+      if (!to) throw new Error('Falta "to"');
+      const from = P.norm(path), dst = P.norm(to); const src = App.project.files[from];
+      if (!src) throw new Error(`No existe el archivo "${from}"`);
+      if (App.project.files[dst]) throw new Error(`Ya existe "${dst}"`);
+      App.writeFile(dst, src.content, { binary: src.binary }); t = `✓ Copiado ${from} → ${dst}`;
+    } else if (op === 'move' || op === 'rename') {
+      if (!to) throw new Error('Falta "to"');
+      const r = App.move(path, to); t = `✓ Movido ${P.norm(path)} → ${r.to} (${r.moved} archivo${r.moved === 1 ? '' : 's'})`;
+    } else if (op === 'delete') {
+      const r = App.remove(path);
+      toast(`Claude eliminó ${P.norm(path)}`, 'warn', { action: { label: 'Deshacer', run: () => App.restore(r.snapshot) }, duration: 12000 });
+      Konsole.push('mcp', `Claude eliminó ${P.norm(path)}`, Preview.runId);
+      t = `✓ Eliminado ${P.norm(path)} (${r.removed} archivo${r.removed === 1 ? '' : 's'})`;
+    } else throw new Error('op debe ser mkdir, move, copy o delete');
+    if (run) t += '\n' + await runSummary();
+    return { text: t };
+  },
+  async search({ query, regex, path } = {}) {
+    await needProject();
+    if (!query) throw new Error('Falta query');
+    let re = null; if (regex) { try { re = new RegExp(query, 'i'); } catch (e) { throw new Error('Regex no válida: ' + e.message); } }
+    const ql = String(query).toLowerCase(); const scope = path ? P.norm(path) : null;
+    const hits = []; let total = 0;
+    for (const p of App.paths()) {
+      if (scope && !P.within(p, scope)) continue;
+      const f = App.project.files[p]; if (f.binary) continue;
+      f.content.split('\n').forEach((l, i) => { if (re ? re.test(l) : l.toLowerCase().includes(ql)) { total++; if (hits.length < 40) hits.push(`${p}:${i + 1}: ${l.trim().slice(0, 160)}`); } });
+    }
+    return { text: total ? hits.join('\n') + (total > hits.length ? `\n… ${total - hits.length} más (afina la búsqueda)` : '') : 'Sin resultados.' };
+  },
+  async run() { await needProject(); showProject(); return { text: await runSummary() }; },
+  async console({ limit = 30, clear } = {}) {
+    const t = consoleText(Konsole.items, Math.max(1, Math.min(100, +limit || 30)));
+    if (clear) Konsole.clear();
+    return { text: (t || '(consola vacía)') + (clear ? '\n(consola limpiada)' : '') };
+  }
+};
+window.PlaygroundAPI = Object.freeze({ ...API });
+
+const API_SPEC = [
+  { name: 'projects', tool: 'projects', desc: 'Listar, abrir, crear, renombrar o guardar proyectos.' },
+  { name: 'tree', tool: 'tree', desc: 'Árbol de carpetas y archivos con número de líneas (sin contenido).' },
+  { name: 'readFile', tool: 'read_file', desc: 'Lee un archivo completo o un rango de líneas.' },
+  { name: 'writeFile', tool: 'write_file', desc: 'Crea un archivo o lo reescribe completo.' },
+  { name: 'editFile', tool: 'edit_file', desc: 'Edición parcial: reemplaza fragmentos o rangos de líneas.' },
+  { name: 'fileOp', tool: 'file_op', desc: 'Crear carpeta, mover/renombrar, copiar o eliminar.' },
+  { name: 'search', tool: 'search', desc: 'Busca texto en todos los archivos (ruta:línea).' },
+  { name: 'run', tool: 'run', desc: 'Ejecuta y devuelve errores y consola de esa ejecución.' },
+  { name: 'console', tool: 'console', desc: 'Últimos mensajes de la consola; opcional limpiar.' }
+];
+
+/* ------------------------------------------------------------ puente MCP (WebSocket) */
+const Bridge = {
+  ws: null, state: 'disconnected', log: [], want: null, retries: 0, retryTimer: null, everConnected: false,
+  setState(s, detail = '') {
+    this.state = s;
+    const label = { disconnected: 'No conectado', connecting: 'Conectando…', connected: 'Conectado', error: 'Error de conexión' }[s];
+    $$('[data-mcp-ui]').forEach(el => el.dataset.mcp = s); $('#mcpBox').dataset.mcp = s;
+    $('#mcpStateTxt').textContent = label; $('#mcpDetail').textContent = detail ? '· ' + detail : '';
+    $$('.mcp-txt').forEach(el => el.textContent = 'MCP: ' + label);
+    $('#mcpConnect').disabled = s === 'connecting' || s === 'connected';
+    $('#mcpDisconnect').disabled = !(s === 'connecting' || s === 'connected');
+  },
+  addLog(text, cls = '') {
+    this.log.push({ text, cls, t: new Date().toLocaleTimeString('es-MX', { hour12: false }) });
+    if (this.log.length > 100) this.log.shift();
+    $('#mcpLog').innerHTML = this.log.map(l => `<div class="${l.cls}">${l.t}  ${esc(l.text)}</div>`).join('');
+    $('#mcpLog').scrollTop = 1e9;
+  },
+  connect(url, token) {
+    if (!/^wss?:\/\//i.test(url)) { toast('La dirección debe empezar con ws:// o wss://', 'err'); return; }
+    if (!token) { toast('Escribe el código de emparejamiento', 'warn'); $('#mcpToken').focus(); return; }
+    this.stopRetry(); this.closeSocket();
+    this.want = { url, token }; this.retries = 0; this.everConnected = false;
+    this.open();
+  },
+  open() {
+    if (!this.want) return;
+    const { url, token } = this.want;
+    this.setState('connecting', this.retries ? `reintento ${this.retries}` : url);
+    this.addLog((this.retries ? 'Reconectando a ' : 'Conectando a ') + url);
+    let ws;
+    try { ws = new WebSocket(url); } catch (e) { this.setState('error', e.message); this.addLog('Error: ' + e.message, 'bad'); this.want = null; return; }
+    this.ws = ws;
+    let hs = setTimeout(() => { if (this.ws === ws && this.state === 'connecting') { this.addLog('El servidor no respondió a tiempo', 'bad'); try { ws.close(); } catch {} } }, 75000);
+    ws.onopen = () => {
+      clearTimeout(hs);
+      hs = setTimeout(() => { if (this.ws === ws && this.state === 'connecting') { this.addLog('El servidor no respondió al saludo', 'bad'); try { ws.close(); } catch {} } }, 8000);
+      ws.send(JSON.stringify({ type: 'hello', token, client: 'mi-playground', apiVersion: API.version, functions: API_SPEC.map(f => f.name) }));
+    };
+    ws.onmessage = ev => {
+      if (this.ws !== ws) return;
+      let m; try { m = JSON.parse(ev.data); } catch { return; }
+      if (m.type === 'welcome') {
+        clearTimeout(hs); const again = this.everConnected; this.everConnected = true; this.retries = 0;
+        this.setState('connected', m.user ? `como ${m.user}` : (m.server || '')); this.addLog((again ? 'Reconectado con ' : 'Emparejado con ') + (m.server || 'servidor MCP') + (m.version ? ' v' + m.version : '') + (m.user ? ` como "${m.user}"` : ''), 'ok');
+        if (m.version && +String(m.version).split('.')[0] < 2) toast('Tu servidor MCP es versión 1. Actualiza server.mjs para usar carpetas y edición parcial.', 'warn', { duration: 9000 });
+        toast(again ? 'Claude MCP reconectado' : 'Claude MCP conectado', 'ok'); prefs.set('mcpUrl', url);
+      }
+      else if (m.type === 'denied') { clearTimeout(hs); this.addLog('Rechazado: ' + (m.message || 'código incorrecto'), 'bad'); this.want = null; this.setState('error', 'código rechazado'); try { ws.close(); } catch {} }
+      else if (m.type === 'replaced') { this.want = null; this.addLog('Otra pestaña se conectó con tu código; esta se desconectó', 'bad'); this.setState('error', 'otra pestaña tomó el control'); toast('Otra pestaña o dispositivo se conectó con tu código. Esta pestaña se desconectó.', 'warn', { duration: 9000 }); }
+      else if (m.type === 'ping') ws.send(JSON.stringify({ type: 'pong' }));
+      else if (m.type === 'call' && this.state === 'connected') this.handleCall(m);
+    };
+    ws.onerror = () => { if (this.ws === ws) this.addLog('No se pudo conectar con el servidor MCP', 'bad'); };
+    ws.onclose = ev => {
+      clearTimeout(hs); if (this.ws !== ws) return; this.ws = null;
+      if (ev.code === 4000 && this.want) { this.want = null; this.setState('error', 'otra pestaña tomó el control'); }
+      if (!this.want) { if (this.state !== 'error') this.setState('disconnected'); return; }
+      this.retries++;
+      if (!this.everConnected && this.retries > 3) { this.want = null; this.setState('error', 'no se pudo conectar'); toast('No se pudo conectar con el servidor MCP', 'err'); return; }
+      const wait = Math.min(30, 2 ** this.retries);
+      this.setState('connecting', `conexión perdida, reintento en ${wait} s`);
+      if (this.everConnected && this.retries === 1) toast('Se perdió la conexión con Claude MCP. Reintentando…', 'warn');
+      this.retryTimer = setTimeout(() => this.open(), wait * 1000);
+    };
+  },
+  stopRetry() { clearTimeout(this.retryTimer); this.retryTimer = null; },
+  closeSocket() { const ws = this.ws; this.ws = null; if (ws) { try { ws.close(1000); } catch {} } },
+  wake() { if (this.want && !this.ws) { this.stopRetry(); this.open(); } },
+  disconnect(silent) { this.want = null; this.stopRetry(); this.closeSocket(); if (!silent) { this.setState('disconnected'); this.addLog('Desconectado'); } },
+  async handleCall(m) {
+    const { id, method, params = {} } = m;
+    const reply = o => this.ws && this.ws.readyState === 1 && this.ws.send(JSON.stringify({ type: 'result', id, ...o }));
+    if (!API_SPEC.some(f => f.name === method)) { this.addLog(`✖ ${method}: no disponible`, 'bad'); return reply({ ok: false, error: `"${method}" no existe en esta versión del Playground. Actualiza index.html y server.mjs a la misma versión.` }); }
+    try {
+      const result = await API[method](params || {});
+      this.addLog(`✓ ${method}${params?.path ? ' ' + params.path : params?.action ? ' ' + params.action : ''}`, 'ok');
+      reply({ ok: true, result });
+    } catch (e) { this.addLog(`✖ ${method}: ${e.message}`, 'bad'); reply({ ok: false, error: e.message }); }
+  }
+};
+
+/* ------------------------------------------------------------ crear y navegar */
+async function createProject(name, opts = {}) {
+  if (App.dirty && App.project) await App.save({ silent: true }).catch(() => {});
+  const now = Date.now();
+  const p = { id: uid(), name: (String(name || '').trim() || 'Proyecto sin título').slice(0, 80), createdAt: now, updatedAt: now, files: opts.files || templateFiles(opts.blank), folders: [] };
+  await Store.put(p);
+  await Router.open(p.id, p);
+  return p;
+}
+const Router = {
+  async open(id, given) {
+    if (App.project?.id !== id) {
+      if (App.dirty && App.project) await App.save({ silent: true }).catch(() => {});
+      const p = given || await Store.get(id);
+      if (!p) { toast('Proyecto no encontrado', 'err'); this.goHome(); return null; }
+      App.load(p);
+    }
+    UI.show('proj');
+    if (location.hash !== '#/p/' + id) history.pushState(null, '', '#/p/' + id);
+    return App.project;
+  },
+  goHome() {
+    if (App.dirty && App.project) App.save({ silent: true }).catch(() => {});
+    if (location.hash && location.hash !== '#/') history.pushState(null, '', '#/');
+    UI.show('home');
+  },
+  async route() {
+    const m = /^#\/p\/(.+)$/.exec(location.hash);
+    if (m) await this.open(decodeURIComponent(m[1])); else UI.show('home');
+  }
+};
+
+/* ------------------------------------------------------------ acciones de la interfaz */
+const Actions = {
+  async newProject() {
+    const name = await Dialog.prompt({ title: 'Nuevo proyecto', message: 'Ponle un nombre:', value: 'Proyecto sin título', okText: 'Crear' });
+    if (name === null) return;
+    try { await createProject(name); toast(`Proyecto “${App.project.name}” creado`, 'ok'); } catch (e) { toast('No se pudo crear: ' + e.message, 'err'); }
+  },
+  targetFolder() { if (App.selFolder && App.isFolder(App.selFolder)) return App.selFolder; return Ed.path ? P.dir(Ed.path) : ''; },
+  async newFile(folder = this.targetFolder()) {
+    const def = P.join(folder, 'nuevo.js');
+    const v = await Dialog.prompt({ title: 'Nuevo archivo', message: 'Nombre (usa / para carpetas, ej. js/jugador.js):', value: def, okText: 'Crear', select: [folder ? folder.length + 1 : 0, def.length - 3] });
+    if (v === null) return;
+    try {
+      const p = P.norm(v); if (App.project.files[p]) { App.openFile(p); return toast('Ese archivo ya existe; lo abrí', 'info'); }
+      App.writeFile(p, '', { source: 'ui' }); App.openFile(p); UI.focusCode(); toast(`Creado ${p}`, 'ok');
+    } catch (e) { toast(e.message, 'err'); }
+  },
+  async newFolder(folder = this.targetFolder()) {
+    const def = P.join(folder, 'carpeta');
+    const v = await Dialog.prompt({ title: 'Nueva carpeta', message: 'Nombre o ruta de la carpeta:', value: def, okText: 'Crear', select: [folder ? folder.length + 1 : 0, def.length] });
+    if (v === null) return;
+    try { const p = App.mkdir(v); App.selFolder = p; UI.tree(); toast(`Carpeta ${p} creada`, 'ok'); } catch (e) { toast(e.message, 'err'); }
+  },
+  async rename(path) {
+    const isDir = !App.project.files[path];
+    const base = P.base(path); const dot = isDir ? base.length : (base.lastIndexOf('.') > 0 ? base.lastIndexOf('.') : base.length);
+    const v = await Dialog.prompt({ title: isDir ? 'Renombrar o mover carpeta' : 'Renombrar o mover archivo', message: 'Nueva ruta (también puedes cambiar la carpeta):', value: path, okText: 'Guardar', select: [path.length - base.length, path.length - base.length + dot] });
+    if (v === null || v.trim() === path) return;
+    try { const r = App.move(path, v); toast(`Movido a ${r.to}`, 'ok'); } catch (e) { toast(e.message, 'err'); }
+  },
+  async remove(path) {
+    const isDir = !App.project.files[path];
+    const n = isDir ? Object.keys(App.project.files).filter(p => P.within(p, path)).length : 1;
+    const ok = await Dialog.confirm({ title: isDir ? 'Eliminar carpeta' : 'Eliminar archivo', message: isDir ? `¿Eliminar “${path}” y sus ${n} archivo(s)?` : `¿Eliminar “${path}”?`, okText: 'Eliminar', danger: true });
+    if (!ok) return;
+    await Snap.take(`Antes de eliminar ${path}`);
+    try { const r = App.remove(path); toast(`Eliminado ${path}`, 'info', { action: { label: 'Deshacer', run: () => App.restore(r.snapshot) } }); } catch (e) { toast(e.message, 'err'); }
+  },
+  duplicate(path) {
+    const f = App.project.files[path]; if (!f) return;
+    const dir = P.dir(path), base = P.base(path), i = base.lastIndexOf('.');
+    let n = 1, np; do { np = P.join(dir, i > 0 ? `${base.slice(0, i)} (${n})${base.slice(i)}` : `${base} (${n})`); n++; } while (App.project.files[np]);
+    App.writeFile(np, f.content, { binary: f.binary, source: 'ui' }); App.openFile(np); toast(`Duplicado como ${np}`, 'ok');
+  },
+  downloadFile(path) { const f = App.project.files[path]; download(P.base(path), new Blob([f.binary ? dataUrlBytes(f.content) : f.content], { type: MIME[P.ext(path)] || 'application/octet-stream' })); },
+  upload(folder = this.targetFolder(), forNew = false) { const inp = $('#fileInput'); inp.value = ''; inp.onchange = () => this.handleUpload([...inp.files], folder, forNew); inp.click(); },
+  async readUpload(file) {
+    if (file.size > 5_000_000) throw new Error(`${file.name}: demasiado grande (máx. 5 MB)`);
+    const e = P.ext(file.name);
+    const isText = TEXT_EXT.has(e) || /^text\//.test(file.type) || /json|javascript|xml/.test(file.type);
+    if (isText) return { content: await file.text() };
+    const url = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); });
+    return { content: url, binary: true };
+  },
+  async handleUpload(files, folder, forNew) {
+    if (!files.length) return;
+    if (files.some(f => /\.zip$/i.test(f.name))) toast('Los .zip todavía no se pueden importar; sube los archivos sueltos.', 'warn');
+    files = files.filter(f => !/\.zip$/i.test(f.name)); if (!files.length) return;
+    try {
+      const read = {};
+      for (const f of files) read[f.webkitRelativePath || f.name] = await this.readUpload(f);
+      if (forNew) {
+        const html = Object.keys(read).filter(k => /\.html?$/i.test(k));
+        if (html.length === 1 && !read['index.html']) { read['index.html'] = read[html[0]]; delete read[html[0]]; }
+        const name = (html[0] || files[0].name).replace(/^.*\//, '').replace(/\.[^.]+$/, '') || 'Importado';
+        const map = {}; for (const [k, v] of Object.entries(read)) map[P.norm(k)] = v.binary ? { content: v.content, binary: true } : { content: v.content };
+        await createProject(name, { files: map }); toast(`Proyecto “${name}” creado con ${files.length} archivo(s)`, 'ok'); return;
+      }
+      let n = 0, lastP = null;
+      for (const [k, v] of Object.entries(read)) {
+        const p = P.norm(P.join(folder, k));
+        if (App.project.files[p] && !(await Dialog.confirm({ title: 'Reemplazar archivo', message: `“${p}” ya existe. ¿Reemplazarlo?`, okText: 'Reemplazar' }))) continue;
+        App.writeFile(p, v.content, { binary: v.binary, source: 'api' }); n++; lastP = p;
+      }
+      if (lastP) App.openFile(lastP);
+      if (n) toast(`${n} archivo(s) subido(s)`, 'ok');
+    } catch (e) { toast('No se pudo subir: ' + e.message, 'err'); }
+  },
+  async history(id = App.project?.id) {
+    if (!id) return;
+    if (App.project?.id !== id) await Router.open(id);
+    const list = await Store.snapList(id).catch(() => []);
+    $('#histList').innerHTML = list.length ? list.map(x => {
+      const n = Object.keys(x.files).length;
+      return `<div class="hrow" data-sid="${esc(x.id)}"><div class="t"><b>${esc(new Date(x.at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }))}</b><span>${esc(x.reason)} · ${n} archivo${n === 1 ? '' : 's'}</span></div>
+        <button class="tbtn" data-hzip title="Descargar esta versión"><svg class="i"><use href="#i-package"/></svg></button>
+        <button class="btn" data-hres>Restaurar</button></div>`;
+    }).join('') : '<div class="empty" style="height:auto;padding:24px">Todavía no hay versiones guardadas.</div>';
+    this._hist = list;
+    if (!Modal.top() || Modal.top().id !== 'mHist') Modal.open('mHist');
+  },
+  async restoreSnap(x) {
+    const ok = await Dialog.confirm({ title: 'Restaurar versión', message: `¿Volver a la versión del ${new Date(x.at).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' })}? Antes se guarda una copia de cómo está ahora, así que también puedes deshacerlo.`, okText: 'Restaurar' });
+    if (!ok) return;
+    if (App.project?.id !== x.pid) await Router.open(x.pid);
+    await Snap.take('Antes de restaurar una versión');
+    App.project.files = structuredClone(x.files); App.project.folders = [...(x.folders || [])];
+    App.tabs = App.tabs.filter(t => App.project.files[t]);
+    Ed.views.clear(); if (Ed.kind === 'cm') Ed.inst.states.clear();
+    const first = App.tabs[0] || Builder.entryOf(App.project) || Object.keys(App.project.files).sort(P.cmp)[0];
+    Ed.path = null;
+    if (first) { if (!App.tabs.includes(first)) App.tabs.push(first); App.reveal(first); Ed.open(first); } else Ed.showEmpty();
+    App.structure(); await App.save({ silent: true });
+    toast('Versión restaurada', 'ok'); this.history(x.pid);
+  },
+  async projectMenu(id, anchor) {
+    const p = id === App.project?.id ? App.project : await Store.get(id);
+    Ctx.open(anchor, [
+      { icon: 'i-folder', label: 'Abrir', run: () => Router.open(id) },
+      { icon: 'i-edit', label: 'Renombrar', run: () => this.renameProject(id) },
+      { icon: 'i-dup', label: 'Duplicar', run: () => this.dupProject(id) },
+      { icon: 'i-refresh', label: 'Historial de versiones', run: () => this.history(id) },
+      { icon: 'i-package', label: 'Descargar ZIP', run: () => this.zip(p) },
+      '-', { icon: 'i-trash', label: 'Eliminar', danger: true, run: () => this.deleteProject(id) }
+    ]);
+  },
+  async renameProject(id = App.project.id) {
+    const p = id === App.project?.id ? App.project : await Store.get(id);
+    const name = await Dialog.prompt({ title: 'Renombrar proyecto', message: 'Nuevo nombre:', value: p.name, okText: 'Guardar' });
+    if (name === null || !name.trim()) return;
+    p.name = name.trim().slice(0, 80);
+    if (p === App.project) { $('#projName').value = p.name; await App.save({ silent: true }); } else { p.updatedAt = Date.now(); await Store.put(p); }
+    toast('Nombre actualizado', 'ok'); if (App.view === 'home') UI.home();
+  },
+  async dupProject(id = App.project.id) {
+    if (id === App.project?.id && App.dirty) await App.save({ silent: true });
+    const p = await Store.get(id); const now = Date.now();
+    const copy = { ...structuredClone(p), id: uid(), name: (p.name + ' (copia)').slice(0, 80), createdAt: now, updatedAt: now };
+    await Store.put(copy); toast(`Duplicado como “${copy.name}”`, 'ok');
+    if (App.view === 'home') UI.home(); else Router.open(copy.id);
+  },
+  async deleteProject(id = App.project.id) {
+    const p = id === App.project?.id ? App.project : await Store.get(id);
+    const ok = await Dialog.confirm({ title: 'Eliminar proyecto', message: `¿Eliminar “${p.name}” y todos sus archivos? No se puede deshacer.`, okText: 'Eliminar', danger: true });
+    if (!ok) return;
+    await Store.del(id);
+    if (App.project?.id === id) { App.project = null; App.dirty = false; App.autoSave.cancel(); prefs.set('lastId', null); Router.goHome(); }
+    toast(`“${p.name}” eliminado`, 'ok'); UI.home();
+  },
+  zip(p = App.project) {
+    try {
+      const enc = new TextEncoder();
+      const entries = Object.keys(p.files).sort(P.cmp).map(k => ({ name: k, data: p.files[k].binary ? dataUrlBytes(p.files[k].content) : enc.encode(p.files[k].content) }));
+      for (const f of p.folders || []) if (!entries.some(e => e.name.startsWith(f + '/'))) entries.push({ name: f + '/', data: new Uint8Array() });
+      download(slug(p.name) + '.zip', Zip.make(entries)); toast('ZIP descargado', 'ok');
+    } catch (e) { toast('No se pudo crear el ZIP: ' + e.message, 'err'); }
+  },
+  exportHtml() {
+    try { const { doc, entry } = Builder.build(App.project); if (!entry) return toast('Falta index.html', 'warn'); download(slug(App.project.name) + '.html', new Blob([doc], { type: 'text/html' })); toast('Exportado como un solo HTML', 'ok'); }
+    catch (e) { toast('No se pudo exportar: ' + e.message, 'err'); }
+  },
+  fullscreen() {
+    const el = $('#previewPanel');
+    if (document.fullscreenElement) return document.exitFullscreen().catch(() => {});
+    if (el.classList.contains('is-fs')) return el.classList.remove('is-fs');
+    const go = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (go) Promise.resolve(go.call(el, { navigationUI: 'hide' })).catch(() => el.classList.add('is-fs')); else el.classList.add('is-fs');
+    setTimeout(() => { try { $('#preview').focus(); } catch {} }, 300);
+  },
+  toggleSide() { if (isNarrow()) return UI.setPane('files'); const w = $('#ws'); w.classList.toggle('no-side'); prefs.set('noSide', w.classList.contains('no-side')); },
+  async copyMcpInfo() {
+    const info = { service: 'Playground MCP', apiVersion: API.version, status: Bridge.state,
+      bridge: { transport: 'WebSocket', path: '/bridge', auth: 'código de emparejamiento (PLAYGROUND_TOKEN), no se guarda en el navegador' },
+      protocol: { hello: { type: 'hello', token: '…', apiVersion: API.version }, welcome: { type: 'welcome', version: '2.x' }, call: { type: 'call', id: '…', method: '…', params: {} }, result: { type: 'result', id: '…', ok: true, result: { text: '…' } } },
+      functions: API_SPEC.map(f => ({ method: f.name, mcpTool: f.tool, description: f.desc })) };
+    (await copyText(JSON.stringify(info, null, 2))) ? toast('Información técnica copiada', 'ok') : toast('No se pudo copiar', 'err');
+  }
+};
+
+/* ------------------------------------------------------------ eventos */
+function bindUI() {
+  // Inicio
+  $('#hNew').onclick = () => Actions.newProject();
+  $('#hImport').onclick = () => Actions.upload('', true);
+  $('#hSearch').oninput = debounce(() => UI.home(), 120);
+  $('#cards').onclick = e => {
+    if (e.target.closest('#cardNew')) return Actions.newProject();
+    const card = e.target.closest('.card[data-id]'); if (!card) return;
+    const more = e.target.closest('[data-card-more]');
+    if (more) return Actions.projectMenu(card.dataset.id, more);
+    Router.open(card.dataset.id);
+  };
+  $('#cards').onkeydown = e => { const c = e.target.closest('.card[data-id]'); if (c && e.key === 'Enter') Router.open(c.dataset.id); };
+  $$('[data-open-keys]').forEach(b => b.onclick = () => Modal.open('mKeys'));
+  // Proyecto
+  $('#btnBack').onclick = () => Router.goHome();
+  $('#btnRun').onclick = () => { App.autoRun.cancel(); Preview.run('manual'); if (isNarrow()) UI.setPane('preview'); };
+  $('#btnRefresh').onclick = () => Preview.run('manual');
+  $('#btnSave').onclick = () => App.save().catch(() => {});
+  const menu = $('#menu'), mb = $('#btnMenu');
+  const closeMenu = () => menu.classList.remove('open');
+  mb.onclick = e => { e.stopPropagation(); menu.classList.toggle('open'); };
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.menu-wrap')) closeMenu();
+    if (!e.target.closest('#ctx') && !e.target.closest('[data-more],[data-card-more]')) Ctx.close();
+  });
+  menu.onclick = e => {
+    const b = e.target.closest('button[data-act]'); if (!b) return; closeMenu();
+    ({ newfile: () => Actions.newFile(), newfolder: () => Actions.newFolder(), upload: () => Actions.upload(), rename: () => Actions.renameProject(), dup: () => Actions.dupProject(),
+      zip: () => Actions.zip(), html: () => Actions.exportHtml(), history: () => Actions.history(), sidebar: () => Actions.toggleSide(), mcp: () => Modal.open('mMcp'), keys: () => Modal.open('mKeys'), delete: () => Actions.deleteProject() })[b.dataset.act]();
+  };
+  const pn = $('#projName');
+  pn.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); pn.blur(); } if (e.key === 'Escape') { pn.value = App.project.name; pn.blur(); } });
+  pn.addEventListener('blur', () => {
+    if (!App.project) return; const v = pn.value.trim();
+    if (!v) { pn.value = App.project.name; return; }
+    if (v !== App.project.name) { App.project.name = v.slice(0, 80); document.title = `${App.project.name} · Mi Playground`; App.save({ silent: true }).then(() => toast('Nombre actualizado', 'ok')).catch(() => {}); }
+  });
+  // Árbol
+  $('#tNewFile').onclick = () => Actions.newFile(); $('#tNewFolder').onclick = () => Actions.newFolder(); $('#tUpload').onclick = () => Actions.upload();
+  $('#tree').onclick = e => {
+    const row = e.target.closest('.tr'); if (!row) { App.selFolder = ''; UI.tree(); return; }
+    const path = row.dataset.path, isDir = row.dataset.kind === 'dir';
+    const more = e.target.closest('[data-more]');
+    if (more) {
+      const items = isDir ? [
+        { icon: 'i-file-plus', label: 'Nuevo archivo aquí', run: () => Actions.newFile(path) },
+        { icon: 'i-folder-plus', label: 'Nueva carpeta aquí', run: () => Actions.newFolder(path) },
+        { icon: 'i-upload', label: 'Subir archivos aquí', run: () => Actions.upload(path) },
+        '-', { icon: 'i-edit', label: 'Renombrar / mover', run: () => Actions.rename(path) },
+        { icon: 'i-trash', label: 'Eliminar carpeta', danger: true, run: () => Actions.remove(path) }
+      ] : [
+        { icon: 'i-edit', label: 'Renombrar / mover', run: () => Actions.rename(path) },
+        { icon: 'i-dup', label: 'Duplicar', run: () => Actions.duplicate(path) },
+        { icon: 'i-download', label: 'Descargar', run: () => Actions.downloadFile(path) },
+        '-', { icon: 'i-trash', label: 'Eliminar', danger: true, run: () => Actions.remove(path) }
+      ];
+      return Ctx.open(more, items);
+    }
+    if (isDir) { App.expanded.has(path) ? App.expanded.delete(path) : App.expanded.add(path); App.selFolder = path; UI.tree(); App.saveUi(); }
+    else { App.selFolder = P.dir(path); App.openFile(path); if (isNarrow()) UI.setPane('code'); }
+  };
+  // Arrastrar y soltar (escritorio): mover archivos o subir desde la computadora
+  const tree = $('#tree');
+  tree.addEventListener('dragstart', e => { const r = e.target.closest('.tr'); if (r) e.dataTransfer.setData('text/pg-path', r.dataset.path); });
+  tree.addEventListener('dragover', e => { if ([...e.dataTransfer.types].some(t => t === 'text/pg-path' || t === 'Files')) { e.preventDefault(); $$('.tr.drop').forEach(x => x.classList.remove('drop')); e.target.closest('.tr.dir')?.classList.add('drop'); } });
+  tree.addEventListener('dragleave', () => $$('.tr.drop').forEach(x => x.classList.remove('drop')));
+  tree.addEventListener('drop', e => {
+    e.preventDefault(); $$('.tr.drop').forEach(x => x.classList.remove('drop'));
+    const dir = e.target.closest('.tr.dir')?.dataset.path || '';
+    const from = e.dataTransfer.getData('text/pg-path');
+    if (from) { const to = P.join(dir, P.base(from)); if (to !== from) { try { App.move(from, to); toast(`Movido a ${to}`, 'ok'); } catch (er) { toast(er.message, 'err'); } } return; }
+    if (e.dataTransfer.files.length) Actions.handleUpload([...e.dataTransfer.files], dir, false);
+  });
+  // Pestañas
+  $('#tabs').onclick = e => { const t = e.target.closest('.tab'); if (!t) return; if (e.target.closest('[data-x]')) return App.closeTab(t.dataset.path); App.openFile(t.dataset.path); };
+  $('#tabs').addEventListener('auxclick', e => { const t = e.target.closest('.tab'); if (t && e.button === 1) App.closeTab(t.dataset.path); });
+  // Cabecera del editor
+  $('#edCopy').onclick = async () => { const f = App.project.files[Ed.path]; if (f) (await copyText(f.content)) ? toast('Copiado', 'ok') : toast('No se pudo copiar', 'err'); };
+  $('#edClear').onclick = () => {
+    const path = Ed.path, f = App.project.files[path]; if (!f || !f.content) return;
+    const prev = f.content; Snap.take(`Antes de vaciar ${path}`); App.writeFile(path, '', { source: 'api' });
+    toast(`${P.base(path)} vaciado`, 'info', { action: { label: 'Deshacer', run: () => App.project.files[path] && App.writeFile(path, prev, { source: 'api' }) } });
+  };
+  // Vista previa
+  $('#autoRun').checked = prefs.get('autoRun', true);
+  $('#autoRun').onchange = e => prefs.set('autoRun', e.target.checked);
+  const setDevice = m => { $('#stage').classList.toggle('mobile', m); $('#vMob').setAttribute('aria-pressed', m); $('#vDesk').setAttribute('aria-pressed', !m); prefs.set('mobileView', m); };
+  $('#vDesk').onclick = () => setDevice(false); $('#vMob').onclick = () => setDevice(true); setDevice(prefs.get('mobileView', false));
+  $('#btnFs').onclick = () => Actions.fullscreen(); $('#btnFsExit').onclick = () => Actions.fullscreen();
+  // Consola
+  $$('.chip').forEach(c => c.onclick = () => { Konsole.filter = c.dataset.filter; $$('.chip').forEach(x => x.setAttribute('aria-pressed', x === c)); Konsole.render(); });
+  $('#btnConClear').onclick = () => Konsole.clear();
+  const keep = $('#btnKeep'); const syncKeep = () => keep.classList.toggle('on', Konsole.keep);
+  keep.onclick = () => { Konsole.keep = !Konsole.keep; prefs.set('keepConsole', Konsole.keep); syncKeep(); toast(Konsole.keep ? 'Se conservarán los mensajes' : 'La consola se limpia en cada ejecución', 'info'); }; syncKeep();
+  $('#conList').onclick = e => {
+    const l = e.target.closest('[data-loc]'); if (!l) return;
+    const m = /^(.+):(\d+)$/.exec(l.dataset.loc); if (!m || !App.project.files[m[1]]) return;
+    App.openFile(m[1]); UI.focusCode(); setTimeout(() => Ed.inst.gotoLine(+m[2]), 60);
+  };
+  // Pestañas móviles y barra de estado
+  $$('.mtab').forEach(t => t.onclick = () => UI.setPane(t.dataset.view));
+  const syncAutosave = () => $('#autosaveTxt').textContent = 'Autoguardado: ' + (App.autosave ? 'sí' : 'no');
+  $('#autosaveBtn').onclick = () => { App.autosave = !App.autosave; if (!App.autosave) App.autoSave.cancel(); prefs.set('autosave', App.autosave); syncAutosave(); if (App.autosave && App.dirty) App.autoSave(); }; syncAutosave();
+  $('#engineBtn').onclick = () => { if (Ed.kind === 'cm') { prefs.set('engine', 'lite'); Ed.mount('lite'); } else { prefs.set('engine', 'auto'); toast('Cargando CodeMirror 6…', 'info'); tryCodeMirror(true); } };
+  $$('[data-mcp-ui]').forEach(b => b.onclick = () => Modal.open('mMcp'));
+  // MCP
+  $('#mcpUrl').value = prefs.get('mcpUrl', 'ws://127.0.0.1:8787');
+  $('#mcpConnect').onclick = () => Bridge.connect($('#mcpUrl').value.trim(), $('#mcpToken').value.trim());
+  $('#mcpDisconnect').onclick = () => Bridge.disconnect();
+  $('#mcpToken').addEventListener('keydown', e => { if (e.key === 'Enter') $('#mcpConnect').click(); });
+  $('#mcpCopy').onclick = () => Actions.copyMcpInfo();
+  $('#hSnapNow').onclick = async () => { await Snap.take('Guardada a mano'); toast('Versión guardada', 'ok'); Actions.history(); };
+  $('#histList').onclick = e => {
+    const row = e.target.closest('[data-sid]'); if (!row) return;
+    const x = (Actions._hist || []).find(h => h.id === row.dataset.sid); if (!x) return;
+    if (e.target.closest('[data-hres]')) return Actions.restoreSnap(x);
+    if (e.target.closest('[data-hzip]')) return Actions.zip({ name: `${x.name} ${new Date(x.at).toISOString().slice(0, 16).replace(/[T:]/g, '-')}`, files: x.files, folders: x.folders });
+  };
+  $('#fnList').innerHTML = API_SPEC.map(f => `<div class="fn"><code>${f.tool}</code><span>${esc(f.desc)}</span></div>`).join('');
+  // Redimensionar paneles
+  const root = document.documentElement.style;
+  const drag = (el, onMove) => el.addEventListener('pointerdown', e => {
+    el.setPointerCapture(e.pointerId); el.classList.add('drag'); $('#preview').style.pointerEvents = 'none';
+    const mv = ev => onMove(ev, $('#ws').getBoundingClientRect());
+    const up = () => { el.classList.remove('drag'); $('#preview').style.pointerEvents = ''; el.removeEventListener('pointermove', mv); ['--side', '--out', '--con'].forEach(k => { const v = root.getPropertyValue(k); if (v) prefs.set(k, v); }); };
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up, { once: true }); el.addEventListener('pointercancel', up, { once: true });
+  });
+  drag($('#rzSide'), (e, r) => root.setProperty('--side', Math.max(150, Math.min(480, e.clientX - r.left)) + 'px'));
+  drag($('#rzOut'), (e, r) => root.setProperty('--out', Math.max(20, Math.min(75, (r.right - e.clientX) / r.width * 100)) + '%'));
+  drag($('#rzCon'), (e, r) => root.setProperty('--con', Math.max(10, Math.min(80, (r.bottom - e.clientY) / r.height * 100)) + '%'));
+  ['--side', '--out', '--con'].forEach(k => { const v = prefs.get(k, null); if (v) root.setProperty(k, v); });
+  if (prefs.get('noSide', false)) $('#ws').classList.add('no-side');
+  // Atajos
+  document.addEventListener('keydown', e => {
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (e.key === 'Escape') {
+      if ($('#ctx').classList.contains('open')) return Ctx.close();
+      if ($('#menu').classList.contains('open')) return closeMenu();
+      if (Modal.top()) { e.preventDefault(); return Modal.close(); }
+      if (document.fullscreenElement) return document.exitFullscreen().catch(() => {});
+      if ($('#previewPanel').classList.contains('is-fs')) return $('#previewPanel').classList.remove('is-fs');
+    }
+    if (Modal.top()?.id === 'mDialog') return;
+    const inProj = App.view === 'proj' && App.project;
+    if (mod && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); if (inProj) App.save().catch(() => {}); return; }
+    if (mod && e.key === 'Enter') { e.preventDefault(); if (inProj) { App.autoRun.cancel(); Preview.run('manual'); } return; }
+    if (e.altKey && !mod && !e.shiftKey) {
+      const always = { KeyM: () => Modal.open('mMcp'), KeyH: () => Modal.open('mKeys') };
+      const proj = { KeyN: () => Actions.newFile(), KeyQ: () => Router.goHome(), KeyE: () => Actions.exportHtml(), KeyL: () => Konsole.clear(), KeyB: () => Actions.toggleSide(),
+        KeyW: () => Ed.path && App.closeTab(Ed.path), Digit1: () => isNarrow() ? UI.setPane('files') : $('#tree').focus(), Digit2: () => UI.focusCode(), Digit3: () => UI.setPane('preview'), Digit4: () => UI.setPane('console') };
+      const fn = always[e.code] || (inProj && proj[e.code]);
+      if (fn) { e.preventDefault(); fn(); }
+    }
+  });
+  window.addEventListener('popstate', () => Router.route());
+  window.addEventListener('beforeunload', e => { if (App.dirty) { App.save({ silent: true }).catch(() => {}); e.preventDefault(); e.returnValue = ''; } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && App.dirty && App.autosave) App.save({ silent: true }).catch(() => {}); if (!document.hidden) Bridge.wake(); });
+  window.addEventListener('online', () => Bridge.wake());
+  window.addEventListener('unhandledrejection', e => { console.error(e.reason); toast('Error: ' + (e.reason?.message || e.reason), 'err'); });
+}
+
+async function tryCodeMirror(announce) {
+  try { CM = CM || await loadCodeMirror(); Ed.mount('cm'); if (announce) toast('CodeMirror 6 activado', 'ok'); }
+  catch (e) { console.warn('[Playground] CodeMirror no disponible:', e.message); if (announce) toast('No se pudo cargar CodeMirror (sin conexión). Se mantiene el editor ligero.', 'warn'); }
+}
+
+/* ------------------------------------------------------------ arranque */
+(async function boot() {
+  Bridge.setState('disconnected');
+  Konsole.render();
+  await Store.init();
+  bindUI();
+  Ed.mount('lite');
+  UI.setPane(UI.pane);
+  try { const all = await Store.all(); if (!all.length) { const now = Date.now(); await Store.put({ id: uid(), name: 'Mi primer proyecto', createdAt: now, updatedAt: now, files: templateFiles(false), folders: [] }); } }
+  catch (e) { toast('Error de almacenamiento: ' + e.message, 'err'); }
+  await Router.route();
+  if (prefs.get('engine', 'auto') !== 'lite') tryCodeMirror(false);
+})();
+</script>
+</body>
+</html>
